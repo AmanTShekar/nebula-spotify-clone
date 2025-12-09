@@ -1,7 +1,7 @@
 # 🌌 Nebula Music
 ### The Ultimate Open Source Audio Streaming Architecture
 
-![Nebula Feature Graphic](screenshots/desktop-player.png)
+![Nebula Feature Graphic](screenshots/desktop-demo.png)
 
 [![Educational License](https://img.shields.io/badge/License-Educational-orange.svg)](LICENSE)
 [![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)](https://reactjs.org/)
@@ -53,10 +53,10 @@ A single codebase delivering two distinct, optimized experiences:
 ## 📸 Screen Previews
 
 ### Desktop "Pro" Player
-![Desktop Mode](screenshots/desktop-player.png)
+![Desktop Mode](screenshots/desktop-demo.png)
 
 ### Mobile Interface
-<img src="screenshots/mobile-player.png" width="300" alt="Mobile Mode" />
+<img src="screenshots/mobile-demo.png" width="300" alt="Mobile Mode" />
 
 ---
 
