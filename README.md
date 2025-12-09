@@ -1,9 +1,9 @@
 # 🌌 Nebula Music
 ### The Ultimate Open Source Audio Streaming Architecture
 
-![Nebula Feature Graphic](https://via.placeholder.com/1280x640?text=Nebula+Music+Architecture+Preview)
+![Nebula Feature Graphic](screenshots/desktop-player.png)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Educational License](https://img.shields.io/badge/License-Educational-orange.svg)](LICENSE)
 [![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)](https://reactjs.org/)
 [![Node.js](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.finance&logoColor=white)](https://nodejs.org)
 [![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
@@ -53,10 +53,10 @@ A single codebase delivering two distinct, optimized experiences:
 ## 📸 Screen Previews
 
 ### Desktop "Pro" Player
-*(Add screenshot here showing the side-by-side lyrics view)*
+![Desktop Mode](screenshots/desktop-player.png)
 
 ### Mobile Interface
-*(Add screenshot here showing the floating player and queue)*
+<img src="screenshots/mobile-player.png" width="300" alt="Mobile Mode" />
 
 ---
 
@@ -121,7 +121,8 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ## 📜 License
 
-Distributed under the **MIT License**. See `LICENSE` for more information.
+**Educational Use Only**. See `LICENSE` for more information.
+This project is for educational and portfolio purposes. 
 
 ---
 
