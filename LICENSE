@@ -1,21 +1,20 @@
-MIT License
+NEBULA MUSIC END USER LICENSE AGREEMENT (EULA)
 
-Copyright (c) 2025 Nebula Music
+Copyright (c) 2025 Aman T Shekar. All Rights Reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. PERMISSION FOR EDUCATIONAL & PORTFOLIO USE ONLY
+   Permission is hereby granted, free of charge, to any person accessing this software ("Nebula Music") solely for the purpose of educational learning, code review, or personal portfolio evaluation.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+2. RESTRICTIONS ON COMMERCIAL & PUBLIC USE
+   You may NOT:
+   - Use this software for any commercial purpose.
+   - Deploy, host, or distribute this software publicly without express written permission from the copyright holder.
+   - Use the name "Spotify" or any associated trademarks in a public-facing product, as this project is a conceptual clone for educational purposes only.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+3. INTELLECTUAL PROPERTY DISCLAIMER
+   This project is a "Clone" created for educational purposes to demonstrate proficiency in Full Stack Development. All data, images, and audio content fetched via third-party APIs (e.g., YouTube, Spotify) remain the property of their respective copyright holders. The developer of Nebula Music claims no ownership over the audio content or metadata displayed within the application.
+
+4. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. THE AUTHORS SHALL NOT BE HELD LIABLE FOR ANY LEGAL ISSUES ARISING FROM THE MISUSE OR UNAUTHORIZED DISTRIBUTION OF THIS CODEBASE.
+
+For permission requests, please contact the author via GitHub.
