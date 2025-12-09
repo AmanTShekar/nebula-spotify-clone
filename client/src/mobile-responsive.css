@@ -1,0 +1,416 @@
+/* ============================================
+   MOBILE-FIRST RESPONSIVE ENHANCEMENTS
+   ============================================ */
+
+/* Safe area for notched devices (iPhone X+, etc.) */
+@supports (padding: max(0px)) {
+    .pb-safe {
+        padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+    }
+
+    .pt-safe {
+        padding-top: max(0.5rem, env(safe-area-inset-top));
+    }
+}
+
+/* ============================================
+   MOBILE BREAKPOINT (max-width: 768px)
+   ============================================ */
+@media (max-width: 768px) {
+
+    /* === SPACING & LAYOUT === */
+
+    /* Reduce padding on mobile */
+    .px-8 {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+
+    .py-8 {
+        padding-top: 1.5rem !important;
+        padding-bottom: 1.5rem !important;
+    }
+
+    .p-8 {
+        padding: 1rem !important;
+    }
+
+    /* Smaller gaps on mobile */
+    .gap-6 {
+        gap: 0.75rem !important;
+    }
+
+    .gap-8 {
+        gap: 1rem !important;
+    }
+
+    .gap-10 {
+        gap: 1.25rem !important;
+    }
+
+    .gap-12 {
+        gap: 1.5rem !important;
+    }
+
+    /* === TYPOGRAPHY === */
+
+    /* Responsive text sizes */
+    .text-7xl {
+        font-size: 2.5rem !important;
+        line-height: 1.1 !important;
+    }
+
+    .text-6xl {
+        font-size: 2rem !important;
+        line-height: 1.1 !important;
+    }
+
+    .text-5xl {
+        font-size: 1.75rem !important;
+        line-height: 1.2 !important;
+    }
+
+    .text-4xl {
+        font-size: 1.5rem !important;
+        line-height: 1.2 !important;
+    }
+
+    .text-3xl {
+        font-size: 1.25rem !important;
+        line-height: 1.3 !important;
+    }
+
+    .text-2xl {
+        font-size: 1.125rem !important;
+        line-height: 1.4 !important;
+    }
+
+    .text-xl {
+        font-size: 1rem !important;
+        line-height: 1.5 !important;
+    }
+
+    /* === HERO SECTION === */
+
+    /* Mobile-friendly hero section */
+    .h-\[400px\] {
+        height: 250px !important;
+    }
+
+    /* Smaller featured album image on mobile */
+    .w-64 {
+        width: 7rem !important;
+        height: 7rem !important;
+    }
+
+    .h-64 {
+        height: 7rem !important;
+    }
+
+    /* === GRID LAYOUTS === */
+
+    /* Optimize grid columns for mobile */
+    .grid-cols-5 {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .grid-cols-4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .grid-cols-3 {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    /* === SCROLLBARS === */
+
+    /* Hide scrollbars on mobile for cleaner look */
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    /* === NAVIGATION === */
+
+    /* Mobile navigation spacing - account for bottom nav */
+    .pb-20 {
+        padding-bottom: 5rem !important;
+    }
+
+    .pb-28 {
+        padding-bottom: 6rem !important;
+    }
+
+    .pb-32 {
+        padding-bottom: 7rem !important;
+    }
+
+    /* === CARDS & COMPONENTS === */
+
+    /* Smaller card padding */
+    .glass-card {
+        padding: 0.75rem !important;
+    }
+
+    /* Smaller rounded corners on mobile */
+    .rounded-3xl {
+        border-radius: 1.25rem !important;
+    }
+
+    .rounded-2xl {
+        border-radius: 1rem !important;
+    }
+
+    /* === BUTTONS === */
+
+    /* Larger touch targets for buttons */
+    button {
+        min-height: 44px;
+    }
+
+    /* === MODALS & OVERLAYS === */
+
+    /* Full screen modals on mobile */
+    .max-w-4xl {
+        max-width: 100% !important;
+    }
+
+    .max-w-2xl {
+        max-width: 100% !important;
+    }
+
+    /* === PLAYER SPECIFIC === */
+
+    /* Compact player on mobile */
+    .player-mobile-compact {
+        height: auto !important;
+        padding: 0.75rem !important;
+    }
+}
+
+/* ============================================
+   SMALL MOBILE (max-width: 480px)
+   ============================================ */
+@media (max-width: 480px) {
+
+    /* Extra small spacing */
+    .px-8 {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
+
+    .gap-6 {
+        gap: 0.5rem !important;
+    }
+
+    /* Even smaller text on very small screens */
+    .text-5xl {
+        font-size: 1.5rem !important;
+    }
+
+    .text-4xl {
+        font-size: 1.25rem !important;
+    }
+
+    /* Single column grids on very small screens */
+    .grid-cols-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+/* ============================================
+   TABLET BREAKPOINT (769px - 1024px)
+   ============================================ */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .px-8 {
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+    }
+
+    .gap-10 {
+        gap: 1.75rem !important;
+    }
+
+    /* 3 column grids on tablet */
+    .grid-cols-5 {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+
+    .grid-cols-4 {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+}
+
+/* ============================================
+   TOUCH DEVICE OPTIMIZATIONS
+   ============================================ */
+@media (hover: none) and (pointer: coarse) {
+
+    /* Touch-friendly tap targets (Apple HIG: 44x44pt minimum) */
+    button,
+    a,
+    [role="button"],
+    input[type="range"],
+    input[type="checkbox"] {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Larger active areas for small icons */
+    .lucide {
+        padding: 8px;
+        margin: -8px;
+    }
+
+    /* Remove hover effects on touch devices */
+    .hover\:scale-105:hover {
+        transform: scale(1) !important;
+    }
+
+    /* Use active states instead */
+    .hover\:scale-105:active {
+        transform: scale(0.95) !important;
+    }
+
+    /* Better touch feedback */
+    button:active,
+    a:active {
+        opacity: 0.7;
+        transition: opacity 0.1s;
+    }
+}
+
+/* ============================================
+   SCROLLING IMPROVEMENTS
+   ============================================ */
+
+/* Smooth momentum scrolling on iOS */
+.custom-scrollbar {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+}
+
+/* Horizontal scroll containers */
+.overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.overflow-x-auto::-webkit-scrollbar {
+    display: none;
+}
+
+/* ============================================
+   LANDSCAPE MOBILE OPTIMIZATIONS
+   ============================================ */
+@media (max-width: 768px) and (orientation: landscape) {
+
+    /* Reduce vertical spacing in landscape */
+    .h-\[400px\] {
+        height: 200px !important;
+    }
+
+    .py-8 {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+    }
+
+    /* Smaller text in landscape */
+    .text-5xl {
+        font-size: 1.5rem !important;
+    }
+
+    .text-4xl {
+        font-size: 1.25rem !important;
+    }
+}
+
+/* ============================================
+   ACCESSIBILITY IMPROVEMENTS
+   ============================================ */
+
+/* Larger text for better readability */
+@media (max-width: 768px) {
+    body {
+        -webkit-text-size-adjust: 100%;
+        -moz-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+    }
+}
+
+/* Focus visible for keyboard navigation */
+@media (max-width: 768px) {
+
+    button:focus-visible,
+    a:focus-visible {
+        outline: 2px solid rgba(99, 102, 241, 0.8);
+        outline-offset: 2px;
+    }
+}
+
+/* ============================================
+   PERFORMANCE OPTIMIZATIONS
+   ============================================ */
+
+/* Reduce animations on mobile for better performance */
+@media (max-width: 768px) and (prefers-reduced-motion: no-preference) {
+
+    .animate-fade-in,
+    .animate-fade-in-up,
+    .animate-fade-in-down {
+        animation-duration: 0.3s !important;
+    }
+}
+
+/* Disable animations if user prefers reduced motion */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Ensure tables scroll on mobile */
+@media(max-width: 768px) {
+    table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    /* Smaller form elements on mobile */
+    input,
+    select,
+    textarea {
+        font-size: 14px !important;
+    }
+
+    /* Stack flex items on mobile */
+    .mobile-stack {
+        flex-direction: column !important;
+    }
+}
+
+/* Touch-friendly checkboxes and radio buttons */
+@media(hover: none) {
+
+    input[type="checkbox"],
+    input[type="radio"] {
+        width: 20px;
+        height: 20px;
+        min-width: 20px !important;
+        /* Override the 44px minimum if visual size is preferred */
+        min-height: 20px !important;
+    }
+}

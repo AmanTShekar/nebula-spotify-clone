@@ -1,0 +1,37 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "set NODE_OPTIONS=--no-deprecation && nodemon index.js",
+    "dev": "set NODE_OPTIONS=--no-deprecation && nodemon index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@distube/ytdl-core": "^4.16.12",
+    "axios": "^1.6.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.22.1",
+    "jsonwebtoken": "^9.0.2",
+    "lyrics-finder": "^21.7.0",
+    "mongoose": "^8.0.0",
+    "node-fetch": "^3.3.2",
+    "nodemailer": "^7.0.11",
+    "querystring": "^0.2.1",
+    "youtube-dl-exec": "^3.0.27",
+    "youtube-sr": "^4.3.12",
+    "yt-search": "^2.13.1",
+    "yt-stream": "^1.7.4",
+    "ytdl-core": "^4.11.5",
+    "ytmusic-api": "^5.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}
