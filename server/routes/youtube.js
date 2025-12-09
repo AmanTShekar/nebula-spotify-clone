@@ -1,6 +1,6 @@
 import express from 'express';
 import yts from 'yt-search';
-import ytdl from 'ytdl-core';
+import ytdl from '@distube/ytdl-core';
 
 const router = express.Router();
 
