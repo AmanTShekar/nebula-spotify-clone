@@ -220,20 +220,23 @@ const Player = () => {
 
                     <div className="flex items-center gap-2 w-full max-w-lg text-[11px] font-mono font-medium text-gray-400">
                         <span className="min-w-[32px] text-right">{formatTime(displayedTime)}</span>
-                        <div
-                            className="relative flex-1 h-1 bg-white/10 rounded-full group cursor-pointer"
-                        >
+                        <div className="relative flex-1 h-1 bg-white/10 rounded-full group/seek cursor-pointer overflow-visible hover:h-1.5 transition-all">
                             <div
-                                className="absolute inset-y-0 left-0 bg-white rounded-full group-hover:bg-green-500 transition-colors shadow-[0_0_10px_rgba(255,255,255,0.3)]"
+                                className="absolute h-full bg-white rounded-full group-hover/seek:bg-green-500 transition-all shadow-[0_0_8px_rgba(255,255,255,0.3)] group-hover/seek:shadow-[0_0_12px_rgba(34,197,94,0.5)]"
                                 style={{ width: `${progressPercent}%` }}
-                            ></div>
+                            >
+                                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover/seek:opacity-100 transition-opacity shadow-lg" />
+                            </div>
                             <input
                                 type="range"
-                                min="0" max={time.totalTime || 0}
+                                min="0"
+                                max={time.totalTime || 0}
                                 value={displayedTime}
                                 onChange={(e) => handleSeekStart(parseFloat(e.target.value))}
                                 onMouseUp={handleSeekCommit}
+                                onTouchEnd={handleSeekCommit}
                                 className="absolute inset-0 w-full opacity-0 cursor-pointer"
+                                title={`${formatTime(displayedTime)} / ${formatTime(time.totalTime)}`}
                             />
                         </div>
                         <span className="min-w-[32px]">{formatTime(time.totalTime)}</span>
@@ -257,18 +260,28 @@ const Player = () => {
                         <Speaker size={20} />
                     </button>
 
-                    <div className="flex items-center gap-2 w-28 group/vol">
-                        <button onClick={toggleMute} className="text-gray-400 hover:text-white p-1">
+                    <div className="flex items-center gap-2 w-32 group/vol">
+                        <button
+                            onClick={toggleMute}
+                            className="text-gray-400 hover:text-white transition hover:scale-110 active:scale-95 p-1"
+                            title={isMuted ? "Unmute" : "Mute"}
+                        >
                             {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
                         </button>
-                        <div className="h-1 flex-1 bg-white/10 rounded-full cursor-pointer relative overflow-hidden">
-                            <div className="absolute h-full bg-white rounded-full group-hover/vol:bg-green-500 transition-colors" style={{ width: `${volume}%` }}></div>
+                        <div className="relative h-1 flex-1 bg-white/10 rounded-full cursor-pointer overflow-visible group-hover/vol:h-1.5 transition-all">
+                            <div
+                                className="absolute h-full bg-white rounded-full group-hover/vol:bg-green-500 transition-all shadow-[0_0_8px_rgba(255,255,255,0.3)] group-hover/vol:shadow-[0_0_12px_rgba(34,197,94,0.5)]"
+                                style={{ width: `${volume}%` }}
+                            />
                             <input
                                 type="range"
-                                min="0" max="1" step="0.01"
-                                value={volume / 100}
-                                onChange={(e) => setVolume(parseFloat(e.target.value) * 100)}
+                                min="0"
+                                max="100"
+                                step="1"
+                                value={volume}
+                                onChange={(e) => setVolume(parseFloat(e.target.value))}
                                 className="absolute inset-0 w-full opacity-0 cursor-pointer"
+                                title={`Volume: ${Math.round(volume)}%`}
                             />
                         </div>
                     </div>
