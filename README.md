@@ -1,7 +1,7 @@
 # 🌌 Nebula Music
 ### The Ultimate Open Source Audio Streaming Architecture
 
-![Nebula Feature Graphic](screenshots/desktop-demo.png)
+![Nebula Feature Graphic](screenshots/nebula-hero.png)
 
 [![Educational License](https://img.shields.io/badge/License-Educational-orange.svg)](LICENSE)
 [![Open Source Love](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)](https://github.com/ellerbrock/open-source-badges/)
