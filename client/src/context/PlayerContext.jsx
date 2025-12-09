@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 
 const PlayerContext = createContext();
 
@@ -174,7 +175,7 @@ export const PlayerProvider = ({ children }) => {
                 // Context doesn't have token easily without usingAuth hook which might cause circular dep.
                 // Actually we can use the backend endpoint which handles token.
 
-                const res = await axios.get(`${import.meta.env.VITE_API_URL}/spotify/recommendations?seed_tracks=${seedTrack}&limit=5`);
+                const res = await axios.get(`${API_URL}/spotify/recommendations?seed_tracks=${seedTrack}&limit=5`);
                 const newTracks = res.data.tracks;
 
                 if (newTracks && newTracks.length > 0) {
@@ -242,7 +243,7 @@ export const PlayerProvider = ({ children }) => {
                     vid = match ? match[1] : null;
                 } else {
                     const query = `${currentTrack.name} ${currentTrack.artists?.[0]?.name || ''}`;
-                    const res = await axios.get(`${import.meta.env.VITE_API_URL}/youtube/resolve?q=${encodeURIComponent(query)}`);
+                    const res = await axios.get(`${API_URL}/youtube/resolve?q=${encodeURIComponent(query)}`);
                     if (res.data.url) {
                         const match = res.data.url.match(/[?&]v=([^&]+)/);
                         vid = match ? match[1] : null;

@@ -50,7 +50,7 @@ router.post('/register', async (req, res) => {
         await newUser.save();
 
         // Generate Token
-        const token = jwt.sign({ id: newUser._id, role: newUser.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        const token = jwt.sign({ id: newUser._id, role: newUser.role }, process.env.JWT_SECRET || 'super_secret_key_nebula_123', { expiresIn: '1d' });
 
         res.status(201).json({ token, user: { id: newUser._id, name: newUser.name, email: newUser.email, role: newUser.role, image: newUser.image } });
     } catch (err) {
@@ -96,7 +96,7 @@ router.post('/login', async (req, res) => {
         await logAttempt('success', 'Low');
 
         // Generate Token
-        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || 'super_secret_key_nebula_123', { expiresIn: '1d' });
 
         res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
     } catch (err) {

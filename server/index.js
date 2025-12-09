@@ -29,15 +29,16 @@ console.error = (...args) => {
 };
 
 // Middleware
+app.use(cors({ origin: '*' }));
 app.use((req, res, next) => {
     console.log(`[REQUEST] ${req.method} ${req.url}`);
     next();
 });
-app.use(cors());
 app.use(express.json());
 
 // Database Connection
-mongoose.connect(process.env.MONGO_URI)
+const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/spotify-clone-v4';
+mongoose.connect(mongoUri)
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.error('MongoDB Connection Error:', err));
 

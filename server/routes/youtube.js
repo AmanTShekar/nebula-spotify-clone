@@ -73,7 +73,7 @@ router.get('/audio', async (req, res) => {
         const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
         const info = await ytdl.getInfo(videoUrl);
-        const format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio' });
+        const format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly' });
 
         if (!format) {
             return res.status(404).json({ message: 'No audio format found' });

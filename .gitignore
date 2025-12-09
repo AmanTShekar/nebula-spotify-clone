@@ -1,34 +1,81 @@
 # Dependencies
-node_modules
-.pnp
+node_modules/
+/.pnp
 .pnp.js
 
 # Testing
-coverage
+/coverage
 
-# Production
-build
-dist
+# Production builds
+/client/dist
+/client/build
+/server/dist
+/server/build
 
-# Misc
-.DS_Store
+# Environment variables
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.production
+client/.env
+server/.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+.parcel-cache/
+
+# Debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# IDEs
-.idea
-.vscode
-*.swp
-*.swo
+# Misc
+.vercel
+.netlify
+.next/
+out/
 
-# OS
-Thumbs.db
+# MongoDB data (if running locally)
+/data/
+/mongodb/
 
-# Agent/AI
-.gemini
+# Test files
+test_*.js
+*.test.js
+*.spec.js
+
+# Build artifacts
+*.tsbuildinfo
+
+# Package manager locks (optional - uncomment if you want to ignore)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml

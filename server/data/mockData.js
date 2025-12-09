@@ -74,3 +74,15 @@ export const MOCK_NEW_RELEASES = {
         ]
     }
 };
+
+export const MOCK_RECOMMENDATIONS = {
+    tracks: MOCK_NEW_RELEASES.albums.items.map(album => ({
+        id: album.id,
+        name: album.name,
+        artists: album.artists,
+        album: album,
+        duration_ms: 180000,
+        popularity: 80,
+        preview_url: null
+    }))
+};

@@ -4,6 +4,7 @@ import SongCard from '../components/SongCard';
 import Loader from '../components/Loader';
 import { Play, History } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
+import { API_URL } from '../config/api';
 
 const Home = () => {
     const [newReleases, setNewReleases] = useState([]);
@@ -13,10 +14,25 @@ const Home = () => {
     useEffect(() => {
         const fetchNewReleases = async () => {
             try {
-                const res = await axios.get(`${import.meta.env.VITE_API_URL}/spotify/new-releases`);
-                setNewReleases(res.data.albums.items);
+                let items = [];
+                try {
+                    const res = await axios.get(`${API_URL}/spotify/new-releases`);
+                    items = res.data?.albums?.items || res.data?.tracks?.items || [];
+                } catch (e) {
+                    console.warn("API unreachable, using local fallback");
+                }
+
+                // If items is still empty, we depend on the server or show simple empty state
+                if (!items.length) {
+                    // Do nothing, let it be empty or server handled
+                }
+                setNewReleases(items);
             } catch (err) {
-                console.error(err);
+                console.error("Home Fetch Error:", err);
+                // Minimal Fallback to prevent white screen/retry loop if server completely fails
+                setNewReleases([
+                    { id: 'error-fallback', name: 'Unable to connect to server', artists: [{ name: 'Please check terminal' }], images: [{ url: 'https://via.placeholder.com/300?text=Offline' }], album_type: 'error' }
+                ]);
             } finally {
                 setLoading(false);
             }
@@ -61,7 +77,7 @@ const Home = () => {
             }
             try {
                 // Search for playlists/tracks in that language
-                const res = await axios.get(`${import.meta.env.VITE_API_URL}/spotify/search`, {
+                const res = await axios.get(`${API_URL}/spotify/search`, {
                     params: { q: `${category} songs`, type: 'album,playlist' }
                 });
                 if (res.data.albums) setCategoryContent(res.data.albums.items);
@@ -84,7 +100,7 @@ const Home = () => {
 
                 for (const artist of uniqueArtists.slice(0, 3)) {
                     try {
-                        const res = await axios.get(`${import.meta.env.VITE_API_URL}/spotify/search`, {
+                        const res = await axios.get(`${API_URL}/spotify/search`, {
                             params: { q: `artist:${artist}`, type: 'track', limit: 10 }
                         });
                         if (res.data.tracks?.items?.length > 0) {
@@ -118,7 +134,7 @@ const Home = () => {
                 }
 
                 if (seed_tracks || seed_artists) {
-                    const recRes = await axios.get(`${import.meta.env.VITE_API_URL}/spotify/recommendations`, {
+                    const recRes = await axios.get(`${API_URL}/spotify/recommendations`, {
                         params: {
                             seed_tracks: seed_tracks || undefined,
                             seed_artists: seed_artists || undefined,

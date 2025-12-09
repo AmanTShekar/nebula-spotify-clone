@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { createPortal } from 'react-dom';
+import { API_URL } from '../config/api';
 
 const SidebarItem = ({ icon: Icon, label, to, active, onClick }) => (
     <Link
@@ -38,15 +39,20 @@ const Sidebar = ({ isMobile, onClose }) => {
             const fetchData = async () => {
                 try {
                     const [likesRes, playlistsRes] = await Promise.all([
-                        axios.get(`${import.meta.env.VITE_API_URL}/user/likes`, {
+                        axios.get(`${API_URL}/user/likes`, {
                             headers: { Authorization: `Bearer ${token}` }
                         }),
-                        axios.get(`${import.meta.env.VITE_API_URL}/user/playlists`, {
+                        axios.get(`${API_URL}/user/playlists`, {
                             headers: { Authorization: `Bearer ${token}` }
                         })
                     ]);
                     setLikedSongsCount(likesRes.data.length);
-                    setPlaylists(playlistsRes.data);
+                    if (Array.isArray(playlistsRes.data)) {
+                        setPlaylists(playlistsRes.data);
+                    } else {
+                        console.error("Playlists API returned non-array:", playlistsRes.data);
+                        setPlaylists([]);
+                    }
                 } catch (err) {
                     console.error("Failed to fetch sidebar data", err);
                 }
@@ -61,7 +67,7 @@ const Sidebar = ({ isMobile, onClose }) => {
 
         setIsLoading(true);
         try {
-            const res = await axios.post(`${import.meta.env.VITE_API_URL}/user/playlists`, { name: newPlaylistName }, {
+            const res = await axios.post(`${API_URL}/user/playlists`, { name: newPlaylistName }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setPlaylists([...playlists, res.data]);
