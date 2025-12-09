@@ -317,13 +317,23 @@ export const PlayerProvider = ({ children }) => {
     }, [videoId]);
 
     const togglePlay = useCallback(() => {
-        if (playerRef.current) {
-            isPlaying ? playerRef.current.pauseVideo() : playerRef.current.playVideo();
+        if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
+            try {
+                isPlaying ? playerRef.current.pauseVideo() : playerRef.current.playVideo();
+            } catch (e) {
+                console.warn('Player not ready:', e);
+            }
         }
     }, [isPlaying]);
 
     const seek = useCallback((seconds) => {
-        if (playerRef.current) playerRef.current.seekTo(seconds, true);
+        if (playerRef.current && typeof playerRef.current.seekTo === 'function') {
+            try {
+                playerRef.current.seekTo(seconds, true);
+            } catch (e) {
+                console.warn('Seek failed:', e);
+            }
+        }
     }, []);
 
     const setVolume = useCallback((vol) => {
