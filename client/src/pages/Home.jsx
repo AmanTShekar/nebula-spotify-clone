@@ -4,12 +4,16 @@ import SongCard from '../components/SongCard';
 import Loader from '../components/Loader';
 import { Play, History } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
+import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../config/api';
 
 const Home = () => {
     const [newReleases, setNewReleases] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [category, setCategory] = useState("All");
+    const [personalizedMixes, setPersonalizedMixes] = useState([]);
     const { recentTracks, playTrack } = usePlayer();
+    const { token, loading: authLoading, isLoggingOut, user } = useAuth();
 
     useEffect(() => {
         const fetchNewReleases = async () => {
@@ -48,40 +52,60 @@ const Home = () => {
         return 'Good evening';
     };
 
-    const [category, setCategory] = useState("All");
-    const [personalizedMixes, setPersonalizedMixes] = useState([]);
-
-    // Expanded Categories
-    const categories = ["All", "English", "Hindi", "Malayalam", "Tamil", "Podcasts"];
+    // Spotify-style Categories
+    const categories = [
+        "All",
+        "Music",
+        "Songs",
+        "Podcasts",
+        "Romance",
+        "Feel Good",
+        "Party",
+        "Relax",
+        "Workout",
+        "Commute"
+    ];
 
     useEffect(() => {
         // Reset state on category change (optional, but good for UX)
     }, [category]);
 
-    const displayContent = () => {
-        if (category === "All") return newReleases;
-        // Basic filtered (Simulated for New Releases based on locale - in real app, query API)
-        // For this implementation, we will actually fetch if category != All in a new effect?
-        // Let's do it simply: We will render "New Releases" always but maybe filter? 
-        // Actually, user wants "Language Categories" to work.
-        return newReleases;
-    };
-
     // Fetch Category Content
     const [categoryContent, setCategoryContent] = useState([]);
     useEffect(() => {
         const fetchCategoryContent = async () => {
-            if (category === "All" || category === "Podcasts") {
-                setCategoryContent([]); // Use default
+            if (category === "All") {
+                setCategoryContent([]);
                 return;
             }
-            try {
-                // Search for playlists/tracks in that language
+            if (category === "Music") {
+                // For "Music", we might just show standard recommendations or "Hits"
                 const res = await axios.get(`${API_URL}/spotify/search`, {
-                    params: { q: `${category} songs`, type: 'album,playlist' }
+                    params: { q: 'Global Hits', type: 'playlist', limit: 10 }
                 });
-                if (res.data.albums) setCategoryContent(res.data.albums.items);
-                else if (res.data.playlists) setCategoryContent(res.data.playlists.items);
+                if (res.data.playlists) setCategoryContent(res.data.playlists.items);
+                return;
+            }
+            if (category === "Songs") {
+                // Fetch Top Songs specifically
+                const res = await axios.get(`${API_URL}/spotify/search`, {
+                    params: { q: 'top global songs', type: 'video', limit: 20 }
+                });
+                if (res.data.tracks) setCategoryContent(res.data.tracks.items);
+                return;
+            }
+            if (category === "Podcasts") {
+                // Mock podcasts or search
+                setCategoryContent([]);
+                return;
+            }
+
+            try {
+                // Search for playlists/tracks in that Mood/Genre
+                const res = await axios.get(`${API_URL}/spotify/search`, {
+                    params: { q: `${category} Mix`, type: 'playlist', limit: 20 }
+                });
+                if (res.data.playlists) setCategoryContent(res.data.playlists.items);
             } catch (err) {
                 console.error("Category fetch failed", err);
             }
@@ -89,81 +113,115 @@ const Home = () => {
         fetchCategoryContent();
     }, [category]);
 
-    // Generate Personalization (Discover Weekly & Artist Mixes)
+    // Personalization: Deep Personalization State
+    const [timeBasedContent, setTimeBasedContent] = useState([]);
+    const [similarToArtistContent, setSimilarToArtistContent] = useState(null);
+
+    // 1. Time-Based Recommendations (Soundtrack for your Morning/Afternoon/Evening)
     useEffect(() => {
-        const generateMixes = async () => {
-            const mixes = [];
+        const fetchTimeBased = async () => {
+            const hour = new Date().getHours();
+            let query = "Pop Hits"; // Default
+            let title = "Today's Hits";
 
-            // 1. Artist Mixes (Existing)
-            if (recentTracks && recentTracks.length > 0) {
-                const uniqueArtists = [...new Set(recentTracks.map(t => t.artists?.[0]?.name).filter(Boolean))].slice(0, 5);
-
-                for (const artist of uniqueArtists.slice(0, 3)) {
-                    try {
-                        const res = await axios.get(`${API_URL}/spotify/search`, {
-                            params: { q: `artist:${artist}`, type: 'track', limit: 10 }
-                        });
-                        if (res.data.tracks?.items?.length > 0) {
-                            mixes.push({
-                                title: `${artist} Mix`,
-                                subtitle: `Hits by ${artist} and more`,
-                                tracks: res.data.tracks.items,
-                                image: res.data.tracks.items[0].album.images[0].url,
-                                type: 'artist'
-                            });
-                        }
-                    } catch (e) { }
-                }
+            if (hour >= 5 && hour < 12) {
+                query = "Morning Acoustic Chill Coffee";
+                title = "Soundtrack for your Morning";
+            } else if (hour >= 12 && hour < 17) {
+                query = "Upbeat Work Focus";
+                title = "Soundtrack for your Afternoon";
+            } else if (hour >= 17 && hour < 22) {
+                query = "Party Dance Evening";
+                title = "Soundtrack for your Evening";
+            } else {
+                query = "Sleep Lo-Fi Chill";
+                title = "Late Night Vibes";
             }
 
-            // 2. Discover Weekly (Algorithm based on recent history or seeds)
             try {
-                let seed_tracks = "";
-                let seed_artists = "";
+                const res = await axios.get(`${API_URL}/spotify/search`, {
+                    params: { q: query, type: 'playlist', limit: 10 }
+                });
+                if (res.data.playlists) {
+                    setTimeBasedContent({ title, items: res.data.playlists.items });
+                }
+            } catch (e) { console.error("Time Based Fetch Error", e); }
+        };
+        fetchTimeBased();
+    }, []);
 
-                if (recentTracks && recentTracks.length > 0) {
-                    // Use up to 3 recent track IDs as seeds
-                    seed_tracks = recentTracks.slice(0, 3).map(t => t.id).join(',');
-                    // If seeds are not valid spotify IDs (e.g. youtube), fallback to search or new releases seeds
+    // 2. Personalization: History & "More Like..."
+    const [serverHistory, setServerHistory] = useState([]);
+    useEffect(() => {
+        // Don't fetch if auth is still loading or logging out
+        if (authLoading || isLoggingOut?.current) return;
+
+        // Double-check: ensure token exists in localStorage (prevents race conditions)
+        const storedToken = localStorage.getItem('token');
+
+        const fetchPersonalization = async () => {
+            try {
+                // Fetch History if logged in (skip for guest users)
+                let history = [];
+                // Skip if guest token OR guest role
+                if (token && storedToken && token !== 'guest_token' && user?.role !== 'guest') {
+                    try {
+                        const historyRes = await axios.get(`${API_URL}/user/history`, {
+                            headers: { Authorization: `Bearer ${token}` }
+                        });
+                        history = historyRes.data || [];
+                        setServerHistory(history);
+                    } catch (e) { /* ignore auth error */ }
                 }
 
-                // Fallback seeds from new releases if history is empty or invalid seeds
-                if (!seed_tracks && newReleases.length > 0) {
-                    seed_tracks = newReleases.slice(0, 2).map(a => a.id).join(','); // Note: Album IDs might not work for track seeds, but let's try or use artists
-                    seed_artists = newReleases.slice(0, 2).map(a => a.artists[0].id).join(',');
+                // If no server history, try local
+                if (history.length === 0 && recentTracks.length > 0) {
+                    history = recentTracks;
                 }
 
-                if (seed_tracks || seed_artists) {
-                    const recRes = await axios.get(`${API_URL}/spotify/recommendations`, {
-                        params: {
-                            seed_tracks: seed_tracks || undefined,
-                            seed_artists: seed_artists || undefined,
-                            limit: 20
+                // Generate Mixes & "More Like" based on history
+                if (history.length > 0) {
+                    const seedTrack = history[0];
+                    const seedArtist = history.find(t => t.artist !== seedTrack.artist)?.artist || seedTrack.artist; // Try to get a variation
+
+                    // Concurrent Fetches
+                    const [mix1, mix2, similarArtistRes] = await Promise.all([
+                        axios.get(`${API_URL}/spotify/recommendations`, { params: { seed_tracks: seedTrack.name } }),
+                        axios.get(`${API_URL}/spotify/recommendations`, { params: { seed_artists: seedTrack.artist } }),
+                        axios.get(`${API_URL}/spotify/search`, { params: { q: `${seedArtist} type music`, type: 'playlist', limit: 10 } }) // More like artist playlists
+                    ]);
+
+                    setPersonalizedMixes([
+                        {
+                            title: `${seedTrack.name} Mix`,
+                            subtitle: `Based on your recent listening`,
+                            image: seedTrack.image,
+                            tracks: mix1.data.tracks
+                        },
+                        {
+                            title: `${seedTrack.artist} Mix`,
+                            subtitle: `More like ${seedTrack.artist}`,
+                            image: mix2.data.tracks[0]?.album?.images?.[0]?.url,
+                            tracks: mix2.data.tracks
                         }
-                    });
+                    ]);
 
-                    if (recRes.data.tracks?.length > 0) {
-                        mixes.unshift({
-                            title: "Discover Weekly",
-                            subtitle: "New music updated for you",
-                            tracks: recRes.data.tracks,
-                            image: "https://misc.scdn.co/liked-songs/liked-songs-300.png", // Or dynamic image
-                            type: 'discover'
+                    if (similarArtistRes.data.playlists) {
+                        setSimilarToArtistContent({
+                            title: `More like ${seedArtist}`,
+                            items: similarArtistRes.data.playlists.items
                         });
                     }
                 }
             } catch (e) {
-                console.error("Discover seed failed", e);
+                console.error("Personalization Data Error", e);
             }
-
-            setPersonalizedMixes(mixes);
         };
 
-        if (newReleases.length > 0) {
-            generateMixes();
-        }
-    }, [recentTracks, newReleases]);
+        fetchPersonalization();
+    }, [recentTracks, token, authLoading, isLoggingOut, user]); // Re-run if local recent tracks change (e.g., guest mode)
 
+    // Error handling with retry logic
     if (loading) return <Loader />;
 
     if (!newReleases.length) {
@@ -179,6 +237,8 @@ const Home = () => {
             </div>
         );
     }
+
+    // ... (logic kept same)
 
     const featuredAlbum = newReleases[0];
 
@@ -212,152 +272,226 @@ const Home = () => {
     };
 
     return (
-        <div className="min-h-full pb-20 md:pb-32">
-            {/* Category Pills */}
-            <div className="sticky top-0 z-30 bg-[#121212]/95 backdrop-blur-md px-4 md:px-8 py-3 md:py-4 flex gap-2 md:gap-3 transition-all duration-300 overflow-x-auto no-scrollbar">
-                {categories.map(cat => (
-                    <button
-                        key={cat}
-                        onClick={() => setCategory(cat)}
-                        className={`px-3 md:px-4 py-1.5 rounded-full text-xs md:text-sm font-bold transition-all duration-300 whitespace-nowrap ${category === cat ? 'bg-white text-black scale-105' : 'bg-white/10 text-white hover:bg-white/20'}`}
-                    >
-                        {cat}
-                    </button>
-                ))}
+        <div className="min-h-screen pb-24 md:pb-32 relative bg-[#0f0f16] max-w-full overflow-x-hidden">
+
+            {/* 1. Mobile-First Category Header (Fixed Top) */}
+            <div className="sticky top-0 z-40 bg-gradient-to-b from-[#0f0f16] via-[#0f0f16]/95 to-transparent pt-3 pb-4">
+                <div className="flex items-center gap-3 overflow-x-auto no-scrollbar px-4 pb-2 md:px-8 snap-x">
+                    {categories.map(cat => (
+                        <button
+                            key={cat}
+                            onClick={() => setCategory(cat)}
+                            className={`
+                                flex-shrink-0 px-5 py-2 rounded-full text-xs font-bold tracking-wide transition-all duration-300 border border-white/5
+                                ${category === cat
+                                    ? 'bg-white text-black scale-100 shadow-[0_0_15px_rgba(255,255,255,0.2)]'
+                                    : 'bg-white/5 text-white/90 hover:bg-white/10 active:scale-95'}
+                            `}
+                        >
+                            {cat}
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            {/* Hero Section - Only on All */}
-            {category === "All" && featuredAlbum && (
-                <div className="relative h-[400px] w-full p-4 md:p-8 flex items-end overflow-hidden group animate-fade-in">
-                    <div className="absolute inset-0">
-                        <img src={featuredAlbum.images[0].url} className="w-full h-full object-cover blur-3xl opacity-50 scale-110 group-hover:scale-100 transition-transform duration-[2s]" alt="Hero Background" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0f0f16] via-[#0f0f16]/40 to-transparent"></div>
-                    </div>
-                    <div className="relative z-10 flex flex-col md:flex-row gap-4 md:gap-8 items-start md:items-end w-full max-w-7xl mx-auto">
-                        <img src={featuredAlbum.images[0].url} className="w-32 h-32 md:w-64 md:h-64 shadow-2xl rounded-xl md:rounded-2xl rotate-0 group-hover:rotate-3 transition-all duration-500 ease-out" alt="Featured Album" />
-                        <div className="mb-2 md:mb-4 flex-1">
-                            <span className="inline-block px-2 md:px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[10px] md:text-xs font-bold tracking-widest mb-2 md:mb-4 border border-white/20 text-indigo-300">FEATURED RELEASE</span>
-                            <h1 className="text-3xl md:text-5xl lg:text-7xl font-black tracking-tighter mb-2 md:mb-4 text-white drop-shadow-2xl line-clamp-2 leading-tight">{featuredAlbum.name}</h1>
-                            <p className="text-sm md:text-xl lg:text-2xl text-gray-200 mb-4 md:mb-8 font-medium">{featuredAlbum.artists.map(a => a.name).join(', ')}</p>
-                            <div className="flex flex-wrap gap-2 md:gap-4">
-                                <button
-                                    onClick={handlePlayFeatured}
-                                    className="bg-white text-black font-bold py-2 px-6 md:py-3 md:px-8 lg:py-4 lg:px-10 rounded-full hover:scale-105 transition shadow-xl shadow-white/10 flex items-center gap-2 text-sm md:text-base"
-                                >
-                                    <Play fill="black" size={20} className="md:w-6 md:h-6" /> Play Now
-                                </button>
-                                <button className="hidden md:flex bg-white/5 text-white font-bold py-3 px-8 lg:py-4 lg:px-10 rounded-full hover:bg-white/10 transition border border-white/10 backdrop-blur-md">
-                                    Save to Library
-                                </button>
+            {/* 2. Main Content */}
+            <div className="relative z-10 px-4 md:px-8 space-y-8 md:space-y-12">
+
+                {/* Hero Section - Immersive Mobile & Desktop */}
+                {category === "All" && featuredAlbum && (
+                    <div className="relative w-full rounded-2xl md:rounded-[2rem] overflow-hidden group shadow-2xl">
+                        {/* Mobile Portrait Height / Desktop Height */}
+                        <div className="relative h-[280px] sm:h-[350px] md:h-[450px] w-full">
+
+                            {/* Background Image */}
+                            <img src={featuredAlbum.images[0].url} className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-1000" alt="Hero" />
+
+                            {/* Gradient Overlay for Text Visibility */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-[#0f0f16] via-[#0f0f16]/60 to-transparent"></div>
+
+                            {/* Content Overlay */}
+                            <div className="absolute bottom-0 left-0 w-full p-4 md:p-8 flex items-end">
+                                <div className="w-full">
+                                    <span className="inline-block px-2 py-0.5 rounded text-[10px] items-center bg-black/60 text-[#1ed760] font-bold tracking-wider mb-2 border border-[#1ed760]/20 backdrop-blur-md">
+                                        NEW RELEASE
+                                    </span>
+                                    <h1 className="text-2xl md:text-5xl lg:text-7xl font-black text-white leading-tight mb-1 md:mb-3 drop-shadow-lg line-clamp-2">
+                                        {featuredAlbum.name}
+                                    </h1>
+                                    <p className="text-gray-300 text-xs md:text-xl font-medium mb-4 md:mb-6 line-clamp-1">
+                                        {featuredAlbum.artists.map(a => a.name).join(', ')}
+                                    </p>
+
+                                    <div className="flex gap-3 md:gap-4">
+                                        <button
+                                            onClick={handlePlayFeatured}
+                                            className="bg-[#1ed760] text-black font-extrabold py-3 px-8 rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(30,215,96,0.3)] flex items-center gap-2 text-sm md:text-base"
+                                        >
+                                            <Play fill="black" size={18} className="md:w-5 md:h-5" />
+                                            LISTEN
+                                        </button>
+                                        <button className="hidden md:flex bg-white/5 backdrop-blur-md border border-white/10 text-white font-bold py-3 px-6 rounded-full hover:bg-white/10 transition text-sm">
+                                            Save +
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            <div className="p-4 md:p-8 max-w-8xl mx-auto space-y-8 md:space-y-12">
-                {category === "All" && <h2 className="text-2xl md:text-4xl font-bold tracking-tight text-white/90">{greeting()}</h2>}
-                {category !== "All" && <h2 className="text-2xl md:text-4xl font-bold tracking-tight text-white/90">{category}</h2>}
-
-                {/* Recently Played Section */}
-                {category === "All" && recentTracks && recentTracks.length > 0 && (
-                    <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-                        <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-white/80 border-l-4 border-pink-500 pl-3 md:pl-4 flex items-center gap-2">
-                            <History size={24} className="md:w-7 md:h-7" /> Recently Played
-                        </h2>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6">
-                            {recentTracks.slice(0, 5).map(track => (
-                                <SongCard key={`recent-${track.id}`} track={track} context={recentTracks} />
-                            ))}
                         </div>
                     </div>
                 )}
 
-                {/* Made For You - Personalization */}
-                {category === "All" && personalizedMixes.length > 0 && (
-                    <div className="animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-                        <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-white/80 border-l-4 border-emerald-500 pl-3 md:pl-4">Made For You</h2>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6">
-                            {personalizedMixes.map((mix, i) => (
-                                <div onClick={() => playMix(mix)} key={i} className="glass-card p-3 md:p-4 rounded-xl group cursor-pointer relative hover:-translate-y-2 transition-transform">
-                                    <div className="relative shadow-lg mb-3 md:mb-4 rounded-lg overflow-hidden aspect-square bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center">
-                                        {mix.image ? (
-                                            <img src={mix.image} alt={mix.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                                        ) : <span className="text-2xl md:text-4xl font-black text-white/20 italic tracking-tighter">MIX {i + 1}</span>}
-                                        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors"></div>
-                                        <button className="absolute bottom-2 right-2 bg-green-500 text-black rounded-full p-2 md:p-3 shadow-xl translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 active:scale-95 z-20">
-                                            <Play fill="black" size={16} className="md:w-5 md:h-5 ml-0.5" />
-                                        </button>
+                {/* Greeting (Desktop Only mostly, or subtle) */}
+                {category === "All" && (
+                    <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight">{greeting()}</h2>
+                )}
+                {category !== "All" && (
+                    <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight">{category} Mixes</h2>
+                )}
+
+                {/* Recently Played */}
+                {(() => {
+                    // Combine and dedupe history
+                    const rawHistory = [...serverHistory, ...recentTracks];
+                    const seen = new Set();
+                    const validHistory = rawHistory.filter(t => {
+                        const id = t.trackId || t.id;
+                        if (!id || !t.name || t.name === 'undefined' || seen.has(id)) return false;
+                        seen.add(id);
+                        return true;
+                    });
+
+                    if (category === "All" && validHistory.length > 0) {
+                        return (
+                            <div className="animate-fade-in-up">
+                                <div className="flex items-center gap-2 mb-4 text-white/60 text-sm font-bold tracking-widest uppercase">
+                                    <History size={14} /> Recently Played
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6">
+                                    {validHistory.slice(0, 5).map((track, i) => {
+                                        const trackData = {
+                                            id: track.trackId || track.id,
+                                            name: track.name,
+                                            artists: typeof track.artist === 'string' ? [{ name: track.artist }] : track.artists || [],
+                                            album: { images: [{ url: track.image || track.album?.images?.[0]?.url }] },
+                                            source: 'spotify'
+                                        };
+                                        if (!trackData.artists.length && track.artist) trackData.artists = [{ name: track.artist }];
+                                        return <SongCard key={i} track={trackData} context={[]} />;
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    }
+                    return null;
+                })()}
+
+                {/* Made For You (Mixes) - Always show something */}
+                {category === "All" && (
+                    <div className="animate-fade-in-up delay-100">
+                        <div className="flex items-center gap-2 mb-4 text-white/60 text-sm font-bold tracking-widest uppercase">
+                            Made For You
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6">
+                            {(personalizedMixes.length > 0 ? personalizedMixes : [
+                                // Fallback Mixes if no history
+                                { title: "Daily Mix 1", subtitle: "Just for you", image: newReleases[0]?.images[0]?.url, tracks: newReleases.slice(0, 10) },
+                                { title: "Discover Weekly", subtitle: "New music updated every Monday", image: newReleases[1]?.images[0]?.url, tracks: newReleases.slice(5, 15) },
+                                { title: "On Repeat", subtitle: "songs you love right now", image: newReleases[2]?.images[0]?.url, tracks: newReleases.slice(2, 12) },
+                                { title: "Release Radar", subtitle: "Catch up on the latest releases", image: newReleases[3]?.images[0]?.url, tracks: newReleases.slice(0, 5) }
+                            ]).slice(0, 4).map((mix, i) => (
+                                <div onClick={() => playMix(mix)} key={i} className="group relative cursor-pointer">
+                                    <div className="aspect-square rounded-lg md:rounded-xl overflow-hidden shadow-lg mb-3 relative bg-[#18181b]">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 opacity-80 group-hover:opacity-100 transition-opacity"></div>
+                                        {mix.image && <img src={mix.image} className="absolute inset-0 w-full h-full object-cover mix-blend-overlay group-hover:scale-110 transition-transform duration-700" alt={mix.title} />}
+
+                                        <div className="absolute inset-0 flex items-center justify-center p-4">
+                                            <span className="font-black text-white text-xl md:text-3xl text-center leading-none drop-shadow-lg uppercase break-words w-full">
+                                                {mix.title?.replace('Mix', '') || 'Daily'}<br /><span className="text-white/60 text-base md:text-xl">MIX</span>
+                                            </span>
+                                        </div>
+
+                                        {/* Play Overlay */}
+                                        <div className="absolute inset-x-0 bottom-0 p-3 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-300 flex justify-end bg-gradient-to-t from-black/60 to-transparent">
+                                            <div className="bg-gradient-to-br from-purple-500 via-pink-500 to-blue-500 text-white w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition-transform">
+                                                <Play fill="white" size={20} className="ml-1" />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <h3 className="text-white font-bold truncate mb-1 text-sm md:text-base">{mix.title}</h3>
-                                    <p className="text-gray-400 text-xs md:text-sm line-clamp-2">{mix.subtitle}</p>
+                                    <h3 className="text-white font-bold text-sm truncate">{mix.title}</h3>
+                                    <p className="text-gray-400 text-xs line-clamp-1">{mix.subtitle}</p>
                                 </div>
                             ))}
                         </div>
                     </div>
                 )}
 
-                {/* Fallback Made For You if empty logic could go here */}
-
-                {/* Content Sections */}
-                {category === "All" ? (
-                    <div className="animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-                        <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-white/80 border-l-4 border-indigo-500 pl-3 md:pl-4">New Releases</h2>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6">
-                            {newReleases.slice(1, 11).map(album => {
+                {/* Time-Based Recommendations */}
+                {category === "All" && timeBasedContent.items && (
+                    <div className="animate-fade-in-up delay-150">
+                        <div className="flex items-center gap-2 mb-4 text-white/60 text-sm font-bold tracking-widest uppercase">
+                            {timeBasedContent.title}
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6">
+                            {timeBasedContent.items.map(album => {
+                                // Normalize for SongCard (Playlists)
                                 const trackData = {
                                     id: album.id,
                                     name: album.name,
+                                    artists: [{ name: 'Playlist' }],
                                     album: album,
-                                    artists: album.artists,
-                                    preview_url: null,
+                                    image: album.images[0]?.url,
                                     source: 'spotify'
                                 };
-                                const context = newReleases.slice(1, 11).map(a => ({
-                                    id: a.id,
-                                    name: a.name,
-                                    album: a,
-                                    artists: a.artists,
-                                    preview_url: null,
-                                    source: 'spotify'
-                                }));
-
-                                return (
-                                    <SongCard key={album.id} track={trackData} context={context} />
-                                );
+                                return <SongCard key={album.id} track={trackData} context={[]} />;
                             })}
                         </div>
-                    </div>
-                ) : categoryContent.length > 0 ? (
-                    <div className="animate-fade-in-up">
-                        <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-white/80 pl-3 md:pl-4">{category} Hits</h2>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6">
-                            {categoryContent.map(album => {
-                                const trackData = {
-                                    id: album.id,
-                                    name: album.name,
-                                    album: album,
-                                    artists: album.artists,
-                                    preview_url: null,
-                                    source: 'spotify'
-                                };
-                                const context = categoryContent.map(a => ({
-                                    id: a.id,
-                                    name: a.name,
-                                    album: a,
-                                    artists: a.artists,
-                                    preview_url: null,
-                                    source: 'spotify'
-                                }));
-                                return <SongCard key={album.id} track={trackData} context={context} />;
-                            })}
-                        </div>
-                    </div>
-                ) : (
-                    <div className="text-center py-20 text-gray-500">
-                        {category === "Podcasts" ? "Coming Soon..." : "Loading content..."}
                     </div>
                 )}
+
+                {/* More Like [Artist] Playlist/Section */}
+                {category === "All" && similarToArtistContent && (
+                    <div className="animate-fade-in-up delay-200">
+                        <div className="flex items-center gap-2 mb-4 text-white/60 text-sm font-bold tracking-widest uppercase">
+                            {similarToArtistContent.title}
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6">
+                            {similarToArtistContent.items.map(album => {
+                                const trackData = {
+                                    id: album.id,
+                                    name: album.name,
+                                    artists: [{ name: 'Similar' }],
+                                    album: album,
+                                    image: album.images[0]?.url,
+                                    source: 'spotify'
+                                };
+                                return <SongCard key={album.id} track={trackData} context={[]} />;
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* New Releases / Category Content */}
+                <div className="animate-fade-in-up delay-200">
+                    <div className="flex items-center gap-2 mb-4 text-white/60 text-sm font-bold tracking-widest uppercase">
+                        {category === "All" ? "New Releases" : (category === "Songs" ? "Top Songs" : "Top Picks")}
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6">
+                        {(category === "All" ? newReleases.slice(0, 10) : categoryContent).map(album => {
+                            const trackData = {
+                                id: album.id,
+                                name: album.name,
+                                album: album,
+                                artists: album.artists,
+                                preview_url: null,
+                                source: 'spotify'
+                            };
+                            return <SongCard key={album.id} track={trackData} context={[]} />;
+                        })}
+                    </div>
+                </div>
+
+                {/* Bottom Spacer for Mobile Nav/Player */}
+                <div className="h-24 md:h-0"></div>
             </div>
         </div>
     );

@@ -70,7 +70,7 @@ const Artist = () => {
 
                 <div className="relative z-10 flex flex-col gap-4 animate-fade-in-up">
                     <span className="flex items-center gap-2 text-sm font-bold tracking-widest uppercase text-white/80">
-                        <div className="p-1 bg-indigo-500 rounded-full"><User size={12} fill="currentColor" /></div>
+                        <div className="p-1 bg-purple-500 rounded-full"><User size={12} fill="currentColor" /></div>
                         Verified Artist
                     </span>
                     <h1 className="text-3xl md:text-5xl lg:text-7xl font-black tracking-tighter drop-shadow-2xl">{artist.name}</h1>
@@ -85,7 +85,7 @@ const Artist = () => {
                 <div className="flex items-center gap-6 mb-10">
                     <button
                         onClick={handlePlayTopTracks}
-                        className="w-14 h-14 bg-indigo-500 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(99,102,241,0.5)] group"
+                        className="w-14 h-14 bg-gradient-to-br from-purple-500 via-pink-500 to-blue-500 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(168,85,247,0.5)] group"
                     >
                         <Play size={28} className="fill-white ml-1 group-hover:scale-110 transition-transform" />
                     </button>
@@ -115,7 +115,7 @@ const Artist = () => {
                                 />
 
                                 <div className="flex-1 min-w-0">
-                                    <div className={`font-medium truncate ${currentTrack?.id === track.id ? 'text-indigo-400' : 'text-white'}`}>
+                                    <div className={`font-medium truncate ${currentTrack?.id === track.id ? 'text-purple-400' : 'text-white'}`}>
                                         {track.name}
                                     </div>
                                     <div className="text-xs text-gray-500 truncate group-hover:text-gray-400">

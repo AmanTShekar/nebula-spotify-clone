@@ -18,14 +18,14 @@ const SidebarItem = ({ icon: Icon, label, to, active, onClick }) => (
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent pointer-events-none"></div>
             </>
         )}
-        <Icon size={22} className={`transition-transform duration-300 z-10 ${active ? 'text-indigo-400 scale-100 drop-shadow-[0_2px_5px_rgba(0,0,0,0.5)]' : 'group-hover:scale-110 group-hover:text-gray-200'}`} />
-        <span className={`font-medium tracking-wide text-sm z-10 transition-colors ${active ? 'font-bold text-white' : ''}`}>{label}</span>
+        <Icon size={32} className={`transition-transform duration-300 z-10 ${active ? 'text-indigo-400 scale-100 drop-shadow-[0_2px_5px_rgba(0,0,0,0.5)]' : 'group-hover:scale-110 group-hover:text-gray-200'}`} />
+        <span className={`font-medium tracking-wide text-base z-10 transition-colors ${active ? 'font-bold text-white' : ''}`}>{label}</span>
     </Link>
 );
 
 const Sidebar = ({ isMobile, onClose }) => {
     const location = useLocation();
-    const { token, user } = useAuth();
+    const { token, user, loading, isLoggingOut } = useAuth();
     const [playlists, setPlaylists] = useState([]);
     const [likedSongsCount, setLikedSongsCount] = useState(0);
 
@@ -35,35 +35,81 @@ const Sidebar = ({ isMobile, onClose }) => {
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
-        if (token) {
+        // Don't fetch if logging out
+        if (isLoggingOut?.current) {
+            setLikedSongsCount(0);
+            setPlaylists([]);
+            return;
+        }
+
+        // Skip API calls for guest users (they don't have server data)
+        if (token === 'guest_token' || user?.role === 'guest') {
+            setLikedSongsCount(0);
+            setPlaylists([]);
+            return;
+        }
+
+        // Double-check: ensure token exists in BOTH state and localStorage
+        // This prevents race conditions during logout in React Strict Mode
+        const storedToken = localStorage.getItem('token');
+
+        if (!loading && token && user && storedToken && token !== 'guest_token') {
+            // Auth is verified, safe to fetch data
             const fetchData = async () => {
                 try {
                     const [likesRes, playlistsRes] = await Promise.all([
                         axios.get(`${API_URL}/user/likes`, {
                             headers: { Authorization: `Bearer ${token}` }
+                        }).catch(err => {
+                            // Silent fail - AuthContext handles logout on 401
+                            return { data: [] };
                         }),
                         axios.get(`${API_URL}/user/playlists`, {
                             headers: { Authorization: `Bearer ${token}` }
+                        }).catch(err => {
+                            // Silent fail - AuthContext handles logout on 401
+                            return { data: [] };
                         })
                     ]);
-                    setLikedSongsCount(likesRes.data.length);
+
+                    setLikedSongsCount(Array.isArray(likesRes.data) ? likesRes.data.length : 0);
+
                     if (Array.isArray(playlistsRes.data)) {
                         setPlaylists(playlistsRes.data);
                     } else {
-                        console.error("Playlists API returned non-array:", playlistsRes.data);
+                        console.warn("Playlists API returned non-array:", playlistsRes.data);
                         setPlaylists([]);
                     }
                 } catch (err) {
                     console.error("Failed to fetch sidebar data", err);
+                    setLikedSongsCount(0);
+                    setPlaylists([]);
                 }
             };
             fetchData();
+        } else {
+            // Reset data if not authenticated
+            setLikedSongsCount(0);
+            setPlaylists([]);
         }
-    }, [token, location.pathname]); // Update on navigation too just in case
+    }, [token, user, loading, location.pathname, isLoggingOut]); // Update on navigation too just in case
 
     const handleCreatePlaylist = async (e) => {
         e.preventDefault();
         if (!newPlaylistName.trim()) return;
+
+        if (!token || !user) {
+            alert('Please log in to create playlists');
+            setIsCreating(false);
+            return;
+        }
+
+        // Prevent guest users from creating playlists
+        if (token === 'guest_token' || user.role === 'guest') {
+            alert('Guest users cannot create playlists. Please sign up or log in.');
+            setIsCreating(false);
+            return;
+        }
 
         setIsLoading(true);
         try {
@@ -74,7 +120,13 @@ const Sidebar = ({ isMobile, onClose }) => {
             setNewPlaylistName("");
             setIsCreating(false);
         } catch (err) {
-            console.error(err);
+            // Show user-friendly error message
+            if (err.response?.status === 401) {
+                alert('Session expired. Please log in again.');
+            } else {
+                alert('Failed to create playlist. Please try again.');
+                console.error('Failed to create playlist:', err.message);
+            }
         } finally {
             setIsLoading(false);
         }
@@ -82,6 +134,9 @@ const Sidebar = ({ isMobile, onClose }) => {
 
     const openCreateModal = () => {
         if (!token) return alert("Login to create playlists");
+        if (token === 'guest_token' || user?.role === 'guest') {
+            return alert("Guest users cannot create playlists. Please sign up or log in.");
+        }
         setIsCreating(true);
         setTimeout(() => document.getElementById('playlist-input')?.focus(), 100);
     }
@@ -111,18 +166,18 @@ const Sidebar = ({ isMobile, onClose }) => {
 
             {/* Library Section */}
             <div className="flex-1 flex flex-col overflow-hidden gap-4">
-                <div className="flex items-center justify-between text-gray-400 px-2">
-                    <Link to="/library" onClick={onClose} className="flex items-center gap-2 hover:text-white transition cursor-pointer">
-                        <Library size={20} />
-                        <span className="font-bold text-sm uppercase tracking-wider">Library</span>
+                <div className="flex items-center justify-between text-white px-2 mb-2">
+                    <Link to="/library" onClick={onClose} className="flex items-center gap-3 hover:text-gray-300 transition cursor-pointer">
+                        <Library size={32} />
+                        <span className="font-bold text-lg uppercase tracking-wider">Library</span>
                     </Link>
-                    <button onClick={openCreateModal} className="hover:bg-white/10 p-1.5 rounded-full cursor-pointer transition text-white/70 hover:text-white">
-                        <Plus size={18} />
+                    <button onClick={openCreateModal} className="hover:bg-white/10 p-2 rounded-full cursor-pointer transition text-white hover:scale-110 active:scale-95">
+                        <Plus size={32} />
                     </button>
                 </div>
 
                 <div className="flex gap-2 px-1">
-                    <span className="bg-white/5 border border-white/5 text-xs font-semibold px-3 py-1 rounded-full cursor-pointer hover:bg-white/10 hover:border-white/10 transition text-gray-300">Playlists</span>
+                    <span className="bg-white/5 border border-white/5 text-sm font-semibold px-3 py-1 rounded-full cursor-pointer hover:bg-white/10 hover:border-white/10 transition text-gray-300">Playlists</span>
                     <span className="bg-white/5 border border-white/5 text-xs font-semibold px-3 py-1 rounded-full cursor-pointer hover:bg-white/10 hover:border-white/10 transition text-gray-300">Artists</span>
                 </div>
 
@@ -158,8 +213,8 @@ const Sidebar = ({ isMobile, onClose }) => {
                                 )}
                             </div>
                             <div>
-                                <p className="text-gray-300 font-medium text-sm group-hover:text-white truncate max-w-[140px]">{pl.name}</p>
-                                <p className="text-gray-600 text-xs truncate max-w-[140px]">{pl.user}</p>
+                                <p className="text-gray-300 font-medium text-base group-hover:text-white truncate max-w-[140px]">{pl.name}</p>
+                                <p className="text-gray-600 text-sm truncate max-w-[140px]">{pl.user}</p>
                             </div>
                         </Link>
                     ))}

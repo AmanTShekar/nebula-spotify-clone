@@ -1,16 +1,15 @@
 import { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
+import { useAuth } from './AuthContext';
 import axios from 'axios';
 import { API_URL } from '../config/api';
 
 const PlayerContext = createContext();
 
 export const PlayerProvider = ({ children }) => {
+    const { token } = useAuth();
     const [currentTrack, setCurrentTrack] = useState(null);
     const [isPlaying, setIsPlaying] = useState(false);
-    const [time, setTime] = useState({
-        currentTime: 0,
-        totalTime: 0
-    });
+    const [time, setTime] = useState({ currentTime: 0, totalTime: 0 });
     const [volume, setVolumeState] = useState(() => {
         const saved = localStorage.getItem('spotify_volume');
         return saved ? parseFloat(saved) : 100;
@@ -23,30 +22,89 @@ export const PlayerProvider = ({ children }) => {
     const [isMaximized, setIsMaximized] = useState(false);
     const [shuffle, setShuffle] = useState(false);
     const [repeat, setRepeat] = useState(0);
-    const [recentTracks, setRecentTracks] = useState(() => {
-        try {
-            const saved = localStorage.getItem('spotify_recent');
-            return saved ? JSON.parse(saved) : [];
-        } catch (e) {
-            console.error("Failed to parse recent tracks", e);
-            return [];
-        }
-    });
+    const [activeDevice, setActiveDevice] = useState("This Device");
+    const [recentTracks, setRecentTracks] = useState([]);
 
-    const playerContainerRef = useRef(null);
     const playerRef = useRef(null);
     const timeUpdateInterval = useRef(null);
 
     const toggleMaximize = () => setIsMaximized(prev => !prev);
 
-    // Persist Recent Tracks
+    // Fetch recent tracks from server for logged-in users
     useEffect(() => {
-        try {
-            localStorage.setItem('spotify_recent', JSON.stringify(recentTracks));
-        } catch (e) {
-            console.error("Failed to save recent tracks", e);
+        const fetchRecentTracks = async () => {
+            if (token && token !== 'guest_token') {
+                try {
+                    const res = await axios.get(`${API_URL}/user/history`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (res.data && Array.isArray(res.data)) {
+                        // Transform server history to match track format
+                        const tracks = res.data.map(item => ({
+                            id: item.trackId || item.id,
+                            name: item.name,
+                            artists: [{ name: item.artist }],
+                            image: item.image,
+                            album: { images: [{ url: item.image }] }
+                        }));
+                        setRecentTracks(tracks);
+                    }
+                } catch (err) {
+                    console.warn('Could not fetch recent tracks:', err);
+                    // Fallback to localStorage for this session
+                    try {
+                        const saved = localStorage.getItem('spotify_recent');
+                        if (saved) setRecentTracks(JSON.parse(saved));
+                    } catch (e) { }
+                }
+            } else {
+                // Guest user - use localStorage
+                try {
+                    const saved = localStorage.getItem('spotify_recent');
+                    if (saved) setRecentTracks(JSON.parse(saved));
+                } catch (e) { }
+            }
+        };
+
+        fetchRecentTracks();
+    }, [token]);
+
+    // Persist to localStorage only for guest users
+    useEffect(() => {
+        if (!token || token === 'guest_token') {
+            try {
+                localStorage.setItem('spotify_recent', JSON.stringify(recentTracks));
+            } catch (e) { }
         }
-    }, [recentTracks]);
+    }, [recentTracks, token]);
+
+    // Load YouTube IFrame API
+    useEffect(() => {
+        if (!window.YT) {
+            const tag = document.createElement('script');
+            tag.src = 'https://www.youtube.com/iframe_api';
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+        }
+    }, []);
+
+    // Time update interval
+    const startTimeUpdate = useCallback(() => {
+        if (timeUpdateInterval.current) clearInterval(timeUpdateInterval.current);
+        timeUpdateInterval.current = setInterval(() => {
+            if (playerRef.current && playerRef.current.getCurrentTime) {
+                const currentTime = playerRef.current.getCurrentTime();
+                setTime(prev => ({ ...prev, currentTime }));
+            }
+        }, 100);
+    }, []);
+
+    const stopTimeUpdate = useCallback(() => {
+        if (timeUpdateInterval.current) {
+            clearInterval(timeUpdateInterval.current);
+            timeUpdateInterval.current = null;
+        }
+    }, []);
 
     // Shuffle Logic
     const toggleShuffle = useCallback(() => {
@@ -59,8 +117,7 @@ export const PlayerProvider = ({ children }) => {
                     const j = Math.floor(Math.random() * (i + 1));
                     [others[i], others[j]] = [others[j], others[i]];
                 }
-                const newQueue = [current, ...others];
-                setShuffledTracks(newQueue);
+                setShuffledTracks([current, ...others]);
             } else {
                 setShuffledTracks([]);
             }
@@ -70,42 +127,13 @@ export const PlayerProvider = ({ children }) => {
 
     const toggleRepeat = () => setRepeat(prev => (prev + 1) % 3);
 
-    // Load YouTube IFrame API
-    useEffect(() => {
-        if (!window.YT) {
-            const tag = document.createElement('script');
-            tag.src = 'https://www.youtube.com/iframe_api';
-            const firstScriptTag = document.getElementsByTagName('script')[0];
-            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-        }
-    }, []);
-
-    // Helper functions
-    const startTimeUpdate = useCallback(() => {
-        if (timeUpdateInterval.current) clearInterval(timeUpdateInterval.current);
-        timeUpdateInterval.current = setInterval(() => {
-            if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
-                try {
-                    const currentTime = playerRef.current.getCurrentTime();
-                    const duration = playerRef.current.getDuration();
-                    setTime({ currentTime, totalTime: duration });
-                } catch (e) { /* Player not ready */ }
-            }
-        }, 100);
-    }, []);
-
-    const stopTimeUpdate = useCallback(() => {
-        if (timeUpdateInterval.current) {
-            clearInterval(timeUpdateInterval.current);
-            timeUpdateInterval.current = null;
-        }
-    }, []);
-
+    // Playback Navigation
     const playTrack = useCallback((track, allTracks = [], isInternalNavigation = false) => {
         setCurrentTrack(track);
 
-        // Add to History (Deduped)
-        if (track) {
+        // Only update local recent tracks for guest users
+        // For logged-in users, server history handles this
+        if (track && (!token || token === 'guest_token')) {
             setRecentTracks(prev => {
                 const filtered = prev.filter(t => t.id !== track.id);
                 return [track, ...filtered].slice(0, 20);
@@ -113,13 +141,9 @@ export const PlayerProvider = ({ children }) => {
         }
 
         if (!isInternalNavigation) {
-            // New playback request from UI
             if (allTracks.length > 0) {
                 setTracks(allTracks);
                 setTrackIndex(allTracks.findIndex(t => t.id === track.id));
-                // We access the current value of 'shuffle' from the state captured in closure
-                // To avoid stale 'shuffle', we should include it in dependency or use functional updates where possible.
-                // However, playTrack is complex. Let's rely on 'shuffle' dependency.
                 if (shuffle) {
                     const others = allTracks.filter(t => t.id !== track.id);
                     for (let i = others.length - 1; i > 0; i--) {
@@ -138,107 +162,198 @@ export const PlayerProvider = ({ children }) => {
         }
     }, [tracks, shuffle]);
 
-    // Navigation Logic
     const [autoplay, setAutoplay] = useState(true);
+    const playedSongsRef = useRef(new Set()); // Track played songs to avoid duplicates
+
+    // Clear played songs cache every 30 minutes to allow re-recommendations
+    useEffect(() => {
+        const interval = setInterval(() => {
+            playedSongsRef.current.clear();
+        }, 30 * 60 * 1000); // 30 minutes
+
+        return () => clearInterval(interval);
+    }, []);
 
     const nextTrack = useCallback(async () => {
         const activeQueue = shuffle ? shuffledTracks : tracks;
         let currentIndex = -1;
-        if (shuffle) {
-            currentIndex = activeQueue.findIndex(t => t.id === currentTrack?.id);
-        } else {
-            currentIndex = trackIndex;
-        }
+        if (shuffle) currentIndex = activeQueue.findIndex(t => t.id === currentTrack?.id);
+        else currentIndex = trackIndex;
 
         if (repeat === 2) { // Repeat One
-            if (playerRef.current) {
-                playerRef.current.seekTo(0);
+            if (playerRef.current && playerRef.current.seekTo) {
+                playerRef.current.seekTo(0, true);
                 playerRef.current.playVideo();
             }
             return;
         }
 
         if (currentIndex < activeQueue.length - 1) {
-            const next = activeQueue[currentIndex + 1];
-            playTrack(next, tracks, true);
+            playTrack(activeQueue[currentIndex + 1], tracks, true);
         } else if (repeat === 1) { // Repeat All
-            const next = activeQueue[0];
-            playTrack(next, tracks, true);
+            playTrack(activeQueue[0], tracks, true);
         } else if (autoplay && currentTrack) {
-            // Autoplay Logic: Fetch recommendations
+            // Smart Autoplay Logic with prediction algorithm
             try {
-                // Determine seed (Spotify ID preferred)
-                const seedTrack = currentTrack.id; // Assuming ID is Spotify ID for now or we have mapped it
-                if (!seedTrack) return;
+                // Build seed tracks from recent history and current track
+                const seedTracks = [];
 
-                const token = await axios.get(`${import.meta.env.VITE_API_URL}/auth/token`); // Minimal token fetch or use existing logic if possible. 
-                // Context doesn't have token easily without usingAuth hook which might cause circular dep.
-                // Actually we can use the backend endpoint which handles token.
+                // Add current track
+                if (currentTrack.id) seedTracks.push(currentTrack.id);
 
-                const res = await axios.get(`${API_URL}/spotify/recommendations?seed_tracks=${seedTrack}&limit=5`);
-                const newTracks = res.data.tracks;
+                // Add recently played tracks (max 3)
+                const recentIds = recentTracks
+                    .slice(0, 3)
+                    .map(t => t.id)
+                    .filter(id => id && id !== currentTrack.id);
+                seedTracks.push(...recentIds);
 
-                if (newTracks && newTracks.length > 0) {
-                    // Append to tracks
-                    setTracks(prev => [...prev, ...newTracks]);
-                    if (shuffle) {
-                        setShuffledTracks(prev => [...prev, ...newTracks]);
+                // Get recommendations based on multiple seeds
+                const seedParam = seedTracks.slice(0, 5).join(',');
+
+                // Fetch recommendations with user's listening patterns
+                const res = await axios.get(`${API_URL}/spotify/recommendations`, {
+                    params: {
+                        seed_tracks: seedParam,
+                        limit: 10,
+                        // Add variety based on current track
+                        target_energy: 0.5,
+                        target_danceability: 0.5,
+                        target_valence: 0.5
                     }
+                });
 
-                    // Play the first new track immediately
-                    playTrack(newTracks[0], tracks, true); // Note: passing 'tracks' here might be stale, but playTrack updates global state.
-                    // Actually, safer to just append and let the next 'nextTrack' call or manual play work? 
-                    // No, we want seamless playback.
-                    // playTrack updates 'currentTrack', 'recentTracks'.
-                    // We need to ensure the queue state is updated before playing? 
-                    // React state updates are batched.
+                let newTracks = res.data.tracks || [];
 
-                    // Let's rely on the fact that we updated state, and we pass the object.
-                    // 'playTrack' uses 'tracks' from its closure provided by 'nextTrack'.
+                // Filter out already played songs and current queue
+                const existingIds = new Set([
+                    ...tracks.map(t => t.id),
+                    ...Array.from(playedSongsRef.current)
+                ]);
+
+                newTracks = newTracks.filter(track => !existingIds.has(track.id));
+
+                if (newTracks.length > 0) {
+                    // Add to queue
+                    setTracks(prev => [...prev, ...newTracks]);
+                    if (shuffle) setShuffledTracks(prev => [...prev, ...newTracks]);
+
+                    // Play first recommended track
+                    const nextSong = newTracks[0];
+                    playedSongsRef.current.add(nextSong.id);
+                    playTrack(nextSong, tracks, true);
+                } else {
+                    // Fallback: get fresh recommendations without filters
+                    const fallbackRes = await axios.get(`${API_URL}/spotify/recommendations`, {
+                        params: {
+                            seed_tracks: currentTrack.id,
+                            limit: 5
+                        }
+                    });
+                    const fallbackTracks = fallbackRes.data.tracks || [];
+                    if (fallbackTracks.length > 0) {
+                        setTracks(prev => [...prev, ...fallbackTracks]);
+                        if (shuffle) setShuffledTracks(prev => [...prev, ...fallbackTracks]);
+                        playTrack(fallbackTracks[0], tracks, true);
+                    }
                 }
             } catch (err) {
                 console.error("Autoplay failed", err);
             }
         }
-    }, [trackIndex, tracks, shuffledTracks, shuffle, repeat, currentTrack, playTrack, autoplay]);
+    }, [trackIndex, tracks, shuffledTracks, shuffle, repeat, currentTrack, playTrack, autoplay, recentTracks]);
 
     const prevTrack = useCallback(() => {
-        if (playerRef.current && playerRef.current.getCurrentTime() > 5) {
-            playerRef.current.seekTo(0);
+        if (playerRef.current && playerRef.current.getCurrentTime && playerRef.current.getCurrentTime() > 5) {
+            playerRef.current.seekTo(0, true);
             return;
         }
 
         const activeQueue = shuffle ? shuffledTracks : tracks;
         let currentIndex = -1;
-        if (shuffle) {
-            currentIndex = activeQueue.findIndex(t => t.id === currentTrack?.id);
-        } else {
-            currentIndex = trackIndex;
-        }
+        if (shuffle) currentIndex = activeQueue.findIndex(t => t.id === currentTrack?.id);
+        else currentIndex = trackIndex;
 
         if (currentIndex > 0) {
-            const prev = activeQueue[currentIndex - 1];
-            playTrack(prev, tracks, true);
+            playTrack(activeQueue[currentIndex - 1], tracks, true);
         } else {
-            playerRef.current.seekTo(0);
+            if (playerRef.current && playerRef.current.seekTo) {
+                playerRef.current.seekTo(0, true);
+            }
         }
     }, [trackIndex, tracks, shuffledTracks, shuffle, currentTrack, playTrack]);
 
-    // Handle track changes (Video ID resolution)
+    const nextTrackRef = useRef(nextTrack);
+    useEffect(() => { nextTrackRef.current = nextTrack; }, [nextTrack]);
+
+    // Google Cast Logic
+    useEffect(() => {
+        window['__onGCastApiAvailable'] = (isAvailable) => {
+            if (isAvailable && window.cast) {
+                try {
+                    window.cast.framework.CastContext.getInstance().setOptions({
+                        receiverApplicationId: window.chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+                        autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+                    });
+                } catch (e) { }
+            }
+        };
+    }, []);
+
+    const requestCast = useCallback(() => {
+        if (window.cast && window.cast.framework) {
+            const context = window.cast.framework.CastContext.getInstance();
+            try { context.setOptions({ receiverApplicationId: window.chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID, autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED }); } catch (e) { }
+            context.requestSession().catch((e) => { if (e !== 'cancel') console.error('Cast Error', e); });
+        } else {
+            alert('Google Cast is not available.');
+        }
+    }, []);
+
+    // Track Resolution & Metadata with caching
+    const videoIdCache = useRef(new Map()); // Cache resolved video IDs
+
     useEffect(() => {
         if (!currentTrack) {
             setVideoId(null);
             setIsPlaying(false);
-            if (playerRef.current) playerRef.current.stopVideo();
+            if (playerRef.current && playerRef.current.stopVideo) {
+                playerRef.current.stopVideo();
+            }
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "none";
             return;
         }
 
-        const resolveVideo = async () => {
+        const addToHistory = async () => {
+            try {
+                // Skip for guest users
+                if (token && token !== 'guest_token') {
+                    await axios.post(`${API_URL}/user/history`, {
+                        trackId: currentTrack.id,
+                        name: currentTrack.name,
+                        artist: currentTrack.artists?.[0]?.name || 'Unknown',
+                        image: currentTrack.image || currentTrack.album?.images?.[0]?.url
+                    }, { headers: { Authorization: `Bearer ${token}` } });
+                }
+            } catch (e) { }
+        };
+        addToHistory();
+
+        const resolve = async () => {
             try {
                 let vid = null;
+
+                // Check cache first
+                const cacheKey = currentTrack.id || currentTrack.name;
+                if (videoIdCache.current.has(cacheKey)) {
+                    vid = videoIdCache.current.get(cacheKey);
+                    setVideoId(vid);
+                    return;
+                }
+
                 if (currentTrack.source === 'youtube' && currentTrack.id) {
                     vid = currentTrack.id;
-                } else if (currentTrack.source === 'youtube' && currentTrack.preview_url) {
+                } else if (currentTrack.preview_url && currentTrack.preview_url.includes('v=')) {
                     const match = currentTrack.preview_url.match(/[?&]v=([^&]+)/);
                     vid = match ? match[1] : null;
                 } else {
@@ -250,89 +365,123 @@ export const PlayerProvider = ({ children }) => {
                     }
                 }
 
-                if (vid) setVideoId(vid);
-                else console.warn('Could not resolve video ID');
-            } catch (err) {
-                console.error('Failed to resolve video:', err);
-            }
+                if (vid) {
+                    // Cache the video ID
+                    videoIdCache.current.set(cacheKey, vid);
+                    setVideoId(vid);
+                }
+            } catch (e) { console.error(e); }
         };
-        resolveVideo();
-    }, [currentTrack]);
+        resolve();
 
-    // Ref-based NextTrack for Player Callbacks to avoid stale closures
-    const nextTrackRef = useRef(nextTrack);
-    useEffect(() => { nextTrackRef.current = nextTrack; }, [nextTrack]);
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: currentTrack.name,
+                artist: currentTrack.artists?.map(a => a.name).join(', '),
+                album: currentTrack.album?.name || 'Single',
+                artwork: [{ src: currentTrack.image || currentTrack.album?.images?.[0]?.url || '', sizes: '512x512', type: 'image/jpeg' }]
+            });
+            navigator.mediaSession.setActionHandler('play', () => togglePlay());
+            navigator.mediaSession.setActionHandler('pause', () => togglePlay());
+            navigator.mediaSession.setActionHandler('previoustrack', () => prevTrack());
+            navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack());
+        }
+    }, [currentTrack, token]);
 
-    // Initialize/Update Player
+    // Initialize or update YouTube player when videoId changes
     useEffect(() => {
         if (!videoId) return;
-        let playerInstance = null;
-        const createPlayer = () => {
-            if (playerRef.current) playerRef.current.destroy();
-            if (playerContainerRef.current) playerContainerRef.current.innerHTML = '<div id="youtube-player-instance"></div>';
 
-            playerInstance = new window.YT.Player('youtube-player-instance', {
-                videoId: videoId,
-                playerVars: {
-                    autoplay: 1, controls: 0, disablekb: 1, fs: 0,
-                    modestbranding: 1, playsinline: 1, rel: 0, showinfo: 0,
-                    iv_load_policy: 3, origin: window.location.origin,
-                },
-                events: {
-                    onReady: (event) => {
-                        setPlayerReady(true);
-                        playerRef.current = event.target;
-                        event.target.setVolume(volume);
-                        event.target.playVideo();
-                        setIsPlaying(true);
-                        startTimeUpdate();
+        const initPlayer = () => {
+            if (playerRef.current && playerRef.current.loadVideoById) {
+                // Player exists, just load new video
+                playerRef.current.loadVideoById(videoId);
+                playerRef.current.setVolume(volume);
+                playerRef.current.playVideo();
+            } else if (window.YT && window.YT.Player) {
+                // Create new player
+                playerRef.current = new window.YT.Player('youtube-player', {
+                    videoId: videoId,
+                    playerVars: {
+                        autoplay: 1,
+                        controls: 0,
+                        disablekb: 1,
+                        fs: 0,
+                        modestbranding: 1,
+                        playsinline: 1,
+                        rel: 0, // Don't show related videos
+                        showinfo: 0,
+                        iv_load_policy: 3,
+                        enablejsapi: 1,
+                        origin: window.location.origin
                     },
-                    onStateChange: (event) => {
-                        if (event.data === window.YT.PlayerState.PLAYING) {
+                    events: {
+                        onReady: (event) => {
+                            console.log('YouTube Player ready');
+                            setPlayerReady(true);
+                            event.target.setVolume(volume);
+                            event.target.playVideo();
                             setIsPlaying(true);
                             startTimeUpdate();
-                        } else if (event.data === window.YT.PlayerState.PAUSED) {
-                            setIsPlaying(false);
-                            stopTimeUpdate();
-                        } else if (event.data === window.YT.PlayerState.ENDED) {
-                            setIsPlaying(false);
-                            stopTimeUpdate();
+                        },
+                        onStateChange: (event) => {
+                            if (event.data === window.YT.PlayerState.PLAYING) {
+                                setIsPlaying(true);
+                                startTimeUpdate();
+                                const duration = event.target.getDuration();
+                                setTime(prev => ({ ...prev, totalTime: duration }));
+                            } else if (event.data === window.YT.PlayerState.PAUSED) {
+                                setIsPlaying(false);
+                                stopTimeUpdate();
+                            } else if (event.data === window.YT.PlayerState.ENDED) {
+                                setIsPlaying(false);
+                                stopTimeUpdate();
+                                // Debounce to prevent double-firing
+                                setTimeout(() => {
+                                    if (nextTrackRef.current) nextTrackRef.current();
+                                }, 100);
+                            }
+                        },
+                        onError: (event) => {
+                            console.error('YouTube player error:', event.data);
+                            // Auto-skip on error
                             if (nextTrackRef.current) nextTrackRef.current();
                         }
                     }
-                }
-            });
-            playerRef.current = playerInstance;
+                });
+            }
         };
 
-        if (window.YT && window.YT.Player) createPlayer();
-        else window.onYouTubeIframeAPIReady = createPlayer;
+        if (window.YT && window.YT.Player) {
+            initPlayer();
+        } else {
+            window.onYouTubeIframeAPIReady = initPlayer;
+        }
 
         return () => {
-            if (playerRef.current) {
-                try { playerRef.current.destroy(); } catch (e) { }
-            }
             stopTimeUpdate();
         };
-    }, [videoId]);
+    }, [videoId, startTimeUpdate, stopTimeUpdate]);
+
+    // Update volume without reinitializing player
+    useEffect(() => {
+        if (playerRef.current && playerRef.current.setVolume && playerReady) {
+            playerRef.current.setVolume(volume);
+        }
+    }, [volume, playerReady]);
 
     const togglePlay = useCallback(() => {
-        if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
-            try {
-                isPlaying ? playerRef.current.pauseVideo() : playerRef.current.playVideo();
-            } catch (e) {
-                console.warn('Player not ready:', e);
-            }
+        if (!playerRef.current) return;
+        if (isPlaying) {
+            playerRef.current.pauseVideo();
+        } else {
+            playerRef.current.playVideo();
         }
     }, [isPlaying]);
 
     const seek = useCallback((seconds) => {
-        if (playerRef.current && typeof playerRef.current.seekTo === 'function') {
-            try {
-                playerRef.current.seekTo(seconds, true);
-            } catch (e) {
-                console.warn('Seek failed:', e);
-            }
+        if (playerRef.current && playerRef.current.seekTo) {
+            playerRef.current.seekTo(seconds, true);
         }
     }, []);
 
@@ -340,7 +489,9 @@ export const PlayerProvider = ({ children }) => {
         const volumePercent = vol * 100;
         setVolumeState(volumePercent);
         localStorage.setItem('spotify_volume', volumePercent);
-        if (playerRef.current) playerRef.current.setVolume(volumePercent);
+        if (playerRef.current && playerRef.current.setVolume) {
+            playerRef.current.setVolume(Math.max(0, Math.min(100, vol > 1 ? vol : volumePercent)));
+        }
         if (volumePercent > 0) setIsMuted(false);
     }, []);
 
@@ -364,45 +515,19 @@ export const PlayerProvider = ({ children }) => {
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
             switch (e.code) {
-                case 'Space':
-                    e.preventDefault();
-                    togglePlay();
-                    break;
-                case 'ArrowRight':
-                    e.preventDefault();
-                    seek(Math.min(time.totalTime, time.currentTime + 5));
-                    break;
-                case 'ArrowLeft':
-                    e.preventDefault();
-                    seek(Math.max(0, time.currentTime - 5));
-                    break;
-                case 'ArrowUp':
-                    e.preventDefault();
-                    setVolume(Math.min(1, (volume / 100) + 0.05));
-                    break;
-                case 'ArrowDown':
-                    e.preventDefault();
-                    setVolume(Math.max(0, (volume / 100) - 0.05));
-                    break;
-                case 'KeyM':
-                    setVolume(volume > 0 ? 0 : 0.5);
-                    break;
-                case 'KeyN':
-                    nextTrack();
-                    break;
-                case 'KeyP':
-                    prevTrack();
-                    break;
+                case 'Space': e.preventDefault(); togglePlay(); break;
+                case 'ArrowRight': e.preventDefault(); seek(Math.min(time.totalTime, time.currentTime + 5)); break;
+                case 'ArrowLeft': e.preventDefault(); seek(Math.max(0, time.currentTime - 5)); break;
+                case 'ArrowUp': e.preventDefault(); setVolume(Math.min(1, (volume / 100) + 0.05)); break;
+                case 'ArrowDown': e.preventDefault(); setVolume(Math.max(0, (volume / 100) - 0.05)); break;
             }
         };
-
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [togglePlay, seek, time, volume, setVolume, nextTrack, prevTrack]);
+    }, [togglePlay, seek, time, volume, setVolume]);
 
-    // Queue Management
+    // Queue Helpers
     const addToQueue = useCallback((track) => {
         if (!track) return;
         setTracks(prev => [...prev, track]);
@@ -413,23 +538,12 @@ export const PlayerProvider = ({ children }) => {
         if (!track) return;
         setTracks(prev => {
             const newTracks = [...prev];
-            // If shuffle is on, this is complex. For now, simplistically inject after current index.
-            // But 'prev' might be just 'tracks' or user expects 'activeQueue'.
-            // Actually we interact with 'tracks' as the source of truth.
-            // But if shuffle is on, we should also inject into 'shuffledTracks'.
-
-            // Logic: Find current index in 'tracks', insert after.
-            // Ideally we need to know the current track's index in state to do this perfectly.
-            // Using trackIndex.
-            const insertIndex = trackIndex + 1;
-            newTracks.splice(insertIndex, 0, track);
+            newTracks.splice(trackIndex + 1, 0, track);
             return newTracks;
         });
-
         if (shuffle) {
             setShuffledTracks(prev => {
-                const currentId = currentTrack?.id;
-                const idx = prev.findIndex(t => t.id === currentId);
+                const idx = prev.findIndex(t => t.id === currentTrack?.id);
                 const newShuffled = [...prev];
                 newShuffled.splice(idx + 1, 0, track);
                 return newShuffled;
@@ -437,19 +551,46 @@ export const PlayerProvider = ({ children }) => {
         }
     }, [trackIndex, shuffle, currentTrack]);
 
+    // Audio Device Selection (Note: YouTube IFrame doesn't support setSinkId)
+    const getAudioDevices = useCallback(async () => {
+        try {
+            // Request microphone permission first (required to enumerate devices)
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const audioOutputs = devices.filter(device => device.kind === 'audiooutput');
+            return audioOutputs.map(device => ({
+                deviceId: device.deviceId,
+                label: device.label || `Speaker ${device.deviceId.slice(0, 5)}`
+            }));
+        } catch (err) {
+            console.warn('Could not enumerate audio devices:', err);
+            return [];
+        }
+    }, []);
+
+    const selectAudioDevice = useCallback((deviceId, label) => {
+        setActiveDevice(label);
+        // Note: YouTube IFrame API doesn't support setSinkId for audio output
+        // The user will need to change audio output in their browser/OS settings
+        console.log('Selected device:', label, deviceId);
+        // Show a toast or notification that device selection isn't supported with YouTube player
+    }, []);
+
     return (
         <PlayerContext.Provider value={{
             currentTrack, isPlaying, togglePlay, playTrack, time, seek, setVolume,
             nextTrack, prevTrack, playerReady, isMaximized, toggleMaximize,
-            shuffle, repeat, toggleShuffle, toggleRepeat,
-            recentTracks,
+            shuffle, repeat, toggleShuffle, toggleRepeat, recentTracks,
             tracks: shuffle ? shuffledTracks : tracks,
             queue: shuffle ? shuffledTracks : tracks,
-            addToQueue, playNext,
-            volume, isMuted, toggleMute, // Exposed for unified slider
+            addToQueue, playNext, volume, isMuted, toggleMute,
+            activeDevice, setActiveDevice, requestCast, getAudioDevices, selectAudioDevice
         }}>
             {children}
-            <div ref={playerContainerRef} style={{ position: 'fixed', top: '-9999px', left: '-9999px' }}></div>
+            {/* Hidden YouTube player */}
+            <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px' }}>
+                <div id="youtube-player"></div>
+            </div>
         </PlayerContext.Provider>
     );
 };

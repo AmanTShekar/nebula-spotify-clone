@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePlayer } from '../context/PlayerContext';
 import { Play, Pause, Clock, Calendar, Music2, MoreHorizontal, Trash2, X } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { API_URL } from '../config/api';
 
 const Playlist = () => {
     const { id } = useParams();
@@ -20,7 +21,7 @@ const Playlist = () => {
     useEffect(() => {
         const fetchPlaylist = async () => {
             try {
-                const res = await axios.get(`${import.meta.env.VITE_API_URL}/user/playlists/${id}`, {
+                const res = await axios.get(`${API_URL}/user/playlists/${id}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setPlaylist(res.data);
@@ -46,7 +47,7 @@ const Playlist = () => {
     const handleDeletePlaylist = async () => {
         if (!window.confirm("Are you sure you want to delete this playlist?")) return;
         try {
-            await axios.delete(`${import.meta.env.VITE_API_URL}/user/playlists/${id}`, {
+            await axios.delete(`${API_URL}/user/playlists/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             showToast("Playlist deleted", "success");
@@ -59,7 +60,7 @@ const Playlist = () => {
     const handleRemoveSong = async (songId) => {
         if (!confirm("Remove this song from playlist?")) return;
         try {
-            await axios.delete(`${import.meta.env.VITE_API_URL}/user/playlists/${id}/songs/${songId}`, {
+            await axios.delete(`${API_URL}/user/playlists/${id}/songs/${songId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             // Optimistic update
@@ -107,9 +108,9 @@ const Playlist = () => {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={handlePlayPlaylist}
-                        className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:shadow-[0_0_30px_rgba(34,197,94,0.5)]"
+                        className="w-14 h-14 bg-gradient-to-br from-purple-500 via-pink-500 to-blue-500 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.5)]"
                     >
-                        <Play size={24} className="fill-black text-black ml-1" />
+                        <Play size={24} className="fill-white text-white ml-1" />
                     </button>
                     {(user?.id === playlist.user || user?._id === playlist.user) && (
                         <button

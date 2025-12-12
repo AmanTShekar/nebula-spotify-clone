@@ -59,9 +59,9 @@ const SongCard = ({ track, context }) => {
 
                 <button
                     onClick={handlePlay}
-                    className={`absolute bottom-3 right-3 bg-green-500 text-black rounded-full p-3.5 shadow-xl shadow-black/40 transform transition-all duration-300 hover:scale-110 hover:brightness-110 active:scale-95 z-20 ${isCurrent ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-90 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100'}`}
+                    className={`absolute bottom-3 right-3 bg-gradient-to-br from-purple-500 via-pink-500 to-blue-500 text-white rounded-full p-3.5 shadow-xl shadow-black/40 transform transition-all duration-300 hover:scale-110 hover:brightness-110 active:scale-95 z-20 ${isCurrent ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-90 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100'}`}
                 >
-                    {isCurrent && isPlaying ? <Pause size={20} className="fill-black" /> : <Play size={20} className="fill-black pl-0.5" />}
+                    {isCurrent && isPlaying ? <Pause size={20} className="fill-white" /> : <Play size={20} className="fill-white pl-0.5" />}
                 </button>
             </div>
 

@@ -1,206 +1,206 @@
 import express from 'express';
-import axios from 'axios';
 import yts from 'yt-search';
-import { getSpotifyToken } from '../services/spotify.js';
 import { MOCK_NEW_RELEASES, MOCK_RECOMMENDATIONS } from '../data/mockData.js';
 
 const router = express.Router();
 
-// Middleware to add Spotify Token (with Soft Fail)
-const withSpotifyToken = async (req, res, next) => {
-    try {
-        const token = await getSpotifyToken();
-        req.spotifyToken = token;
-        req.mockMode = false;
-        next();
-    } catch (error) {
-        console.warn("Spotify Token Failed - Switching to Mock Mode");
-        req.mockMode = true; // Flag to use mock data
-        next();
-    }
-};
-
-// Search
-router.get('/search', withSpotifyToken, async (req, res) => {
-    const { q, type = 'track,artist,album' } = req.query;
+// Search using YouTube
+router.get('/search', async (req, res) => {
+    const { q, type } = req.query;
     if (!q) return res.status(400).json({ error: 'Query parameter "q" is required' });
 
-    const fetchYouTubeSearch = async (query) => {
-        try {
-            console.log(`Searching YouTube for: ${query}`);
-            const r = await yts(query);
+    try {
+        console.log(`Searching YouTube for: ${q} [Type: ${type || 'all'}]`);
+        const r = await yts(q);
+
+        const response = {};
+
+        // Handle Playlists
+        if (type === 'playlist' || !type) {
+            const playlists = (r.playlists || r.lists || []).slice(0, 20).map(p => ({
+                id: p.listId,
+                name: p.title,
+                images: [{ url: p.thumbnail }],
+                description: `By ${p.author?.name || 'Unknown'} • ${p.videoCount} songs`,
+                owner: { display_name: p.author?.name },
+                tracks: { total: p.videoCount },
+                type: 'playlist',
+                source: 'youtube'
+            }));
+            response.playlists = { items: playlists };
+        }
+
+        // Handle Tracks (Videos)
+        if (type === 'video' || type === 'track' || !type) {
             const videos = r.videos.slice(0, 20).map(v => ({
                 id: v.videoId,
                 name: v.title,
-                artists: [{ name: v.author.name, id: v.author.url }],
-                album: { images: [{ url: v.thumbnail }] },
+                artists: [{ name: v.author?.name || 'Unknown', id: v.author?.url }],
+                album: { images: [{ url: v.thumbnail }] }, // Use video thumbnail as 'album art'
                 duration_ms: v.seconds * 1000,
+                source: 'youtube',
+                type: 'track'
+            }));
+            response.tracks = { items: videos };
+        }
+
+        // Handle Artists (Channels)
+        if (type === 'artist') {
+            const artists = (r.channels || []).slice(0, 10).map(c => ({
+                id: c.name, // YouTube doesn't give clean IDs always, use name or url
+                name: c.name,
+                images: [{ url: c.image }],
+                followers: { total: c.subscribers },
+                type: 'artist',
                 source: 'youtube'
             }));
-            return { tracks: { items: videos } };
-        } catch (e) {
-            console.error("YT Search Failed", e);
-            return { tracks: { items: [] } };
+            response.artists = { items: artists };
         }
-    };
 
-    if (req.mockMode) {
-        const data = await fetchYouTubeSearch(q);
-        return res.json(data);
-    }
-
-    try {
-        const response = await axios.get(`https://api.spotify.com/v1/search`, {
-            headers: { Authorization: `Bearer ${req.spotifyToken}` },
-            params: { q, type, limit: 20 },
-        });
-
-        res.json(response.data);
-    } catch (error) {
-        console.error('Spotify Search Error:', error.response?.data || error.message);
-        // Fallback to YouTube
-        const data = await fetchYouTubeSearch(q);
-        res.json(data);
+        res.json(response);
+    } catch (e) {
+        console.error("YouTube Search Failed", e);
+        res.json({ tracks: { items: [] }, playlists: { items: [] } });
     }
 });
 
-// New Releases (Home Page)
-router.get('/new-releases', withSpotifyToken, async (req, res) => {
-    const fetchYouTubeFallback = async () => {
-        try {
-            const r = await yts({ query: 'latest hit songs 2024 music', category: 'music' });
-            let items = r.videos.slice(0, 20).map(v => ({
-                id: v.videoId,
-                name: v.title,
-                artists: [{ name: v.author.name, id: v.author.url }],
-                images: [{ url: v.thumbnail }],
-                album_type: 'single',
-                total_tracks: 1,
-                release_date: v.ago,
-                source: 'youtube'
-            }));
-
-            // Force static YouTube content if search returns nothing (Safety Net)
-            if (items.length === 0) {
-                items = [
-                    { id: '39gjn8I97uk', name: 'Billie Eilish - CHIHIRO', artists: [{ name: 'Billie Eilish' }], images: [{ url: 'https://i.ytimg.com/vi/39gjn8I97uk/hqdefault.jpg' }], source: 'youtube', album_type: 'single' },
-                    { id: '2Vv-BfVoq4g', name: 'Ed Sheeran - Perfect', artists: [{ name: 'Ed Sheeran' }], images: [{ url: 'https://i.ytimg.com/vi/2Vv-BfVoq4g/hqdefault.jpg' }], source: 'youtube', album_type: 'single' },
-                    { id: 'JGwWNGJdvx8', name: 'Ed Sheeran - Shape of You', artists: [{ name: 'Ed Sheeran' }], images: [{ url: 'https://i.ytimg.com/vi/JGwWNGJdvx8/hqdefault.jpg' }], source: 'youtube', album_type: 'single' }
-                ];
-            }
-
-            return { albums: { items } };
-        } catch (e) {
-            console.error("YouTube Fallback Failed:", e);
-            // Emergency Static List
-            const items = [
-                { id: '39gjn8I97uk', name: 'Billie Eilish - CHIHIRO', artists: [{ name: 'Billie Eilish' }], images: [{ url: 'https://i.ytimg.com/vi/39gjn8I97uk/hqdefault.jpg' }], source: 'youtube', album_type: 'single' },
-                { id: '2Vv-BfVoq4g', name: 'Ed Sheeran - Perfect', artists: [{ name: 'Ed Sheeran' }], images: [{ url: 'https://i.ytimg.com/vi/2Vv-BfVoq4g/hqdefault.jpg' }], source: 'youtube', album_type: 'single' }
-            ];
-            return { albums: { items } };
-        }
-    };
-
+// New Releases (Home Page) using YouTube
+router.get('/new-releases', async (req, res) => {
     try {
-        if (req.mockMode) {
-            console.log("Serving YouTube Fallback for New Releases");
-            const data = await fetchYouTubeFallback();
-            return res.json(data);
+        console.log("Fetching new releases from YouTube");
+        const r = await yts({ query: 'latest hit songs 2024 music', category: 'music' });
+        let items = r.videos.slice(0, 20).map(v => ({
+            id: v.videoId,
+            name: v.title,
+            artists: [{ name: v.author.name, id: v.author.url }],
+            images: [{ url: v.thumbnail }],
+            album_type: 'single',
+            total_tracks: 1,
+            release_date: v.ago,
+            source: 'youtube'
+        }));
+
+        // Fallback to static content if search returns nothing
+        if (items.length === 0) {
+            items = [
+                { id: '39gjn8I97uk', name: 'Billie Eilish - CHIHIRO', artists: [{ name: 'Billie Eilish' }], images: [{ url: 'https://i.ytimg.com/vi/39gjn8I97uk/hqdefault.jpg' }], source: 'youtube', album_type: 'single' },
+                { id: '2Vv-BfVoq4g', name: 'Ed Sheeran - Perfect', artists: [{ name: 'Ed Sheeran' }], images: [{ url: 'https://i.ytimg.com/vi/2Vv-BfVoq4g/hqdefault.jpg' }], source: 'youtube', album_type: 'single' },
+                { id: 'JGwWNGJdvx8', name: 'Ed Sheeran - Shape of You', artists: [{ name: 'Ed Sheeran' }], images: [{ url: 'https://i.ytimg.com/vi/JGwWNGJdvx8/hqdefault.jpg' }], source: 'youtube', album_type: 'single' }
+            ];
         }
 
-        const response = await axios.get(`https://api.spotify.com/v1/browse/new-releases`, {
-            headers: { Authorization: `Bearer ${req.spotifyToken}` },
-            params: { limit: 20, country: 'US' },
-        });
-
-        res.json(response.data);
-    } catch (error) {
-        console.error('Spotify New Releases Error:', error.response?.data || error.message);
-        console.log("Serving YouTube Fallback (API Error)");
-        const data = await fetchYouTubeFallback();
-        res.json(data);
+        res.json({ albums: { items } });
+    } catch (e) {
+        console.error("YouTube Fallback Failed:", e);
+        // Emergency Static List
+        const items = [
+            { id: '39gjn8I97uk', name: 'Billie Eilish - CHIHIRO', artists: [{ name: 'Billie Eilish' }], images: [{ url: 'https://i.ytimg.com/vi/39gjn8I97uk/hqdefault.jpg' }], source: 'youtube', album_type: 'single' },
+            { id: '2Vv-BfVoq4g', name: 'Ed Sheeran - Perfect', artists: [{ name: 'Ed Sheeran' }], images: [{ url: 'https://i.ytimg.com/vi/2Vv-BfVoq4g/hqdefault.jpg' }], source: 'youtube', album_type: 'single' }
+        ];
+        res.json({ albums: { items } });
     }
 });
 
 // Get Track Details
-router.get('/track/:id', withSpotifyToken, async (req, res) => {
-    if (req.mockMode) {
-        // Return 1st mock track details with ID matched if possible, else random
-        const track = MOCK_RECOMMENDATIONS.tracks.find(t => t.id === req.params.id) || MOCK_RECOMMENDATIONS.tracks[0];
-        return res.json(track);
-    }
+router.get('/track/:id', async (req, res) => {
     try {
-        const { id } = req.params;
-        const response = await axios.get(`https://api.spotify.com/v1/tracks/${id}`, {
-            headers: { Authorization: `Bearer ${req.spotifyToken}` },
-        });
-        res.json(response.data);
+        // Search YouTube for the track
+        const r = await yts({ videoId: req.params.id });
+        if (r) {
+            const track = {
+                id: r.videoId,
+                name: r.title,
+                artists: [{ name: r.author.name }],
+                album: { images: [{ url: r.thumbnail }] },
+                duration_ms: r.seconds * 1000,
+                source: 'youtube'
+            };
+            return res.json(track);
+        }
     } catch (error) {
-        console.error('Spotify Track Error:', error.response?.data || error.message);
-        // Fallback
-        const track = MOCK_RECOMMENDATIONS.tracks.find(t => t.id === req.params.id) || MOCK_RECOMMENDATIONS.tracks[0];
-        res.json(track);
+        console.error('YouTube Track Error:', error.message);
     }
+
+    // Fallback to mock data
+    const track = MOCK_RECOMMENDATIONS.tracks.find(t => t.id === req.params.id) || MOCK_RECOMMENDATIONS.tracks[0];
+    res.json(track);
 });
 
-// Get Recommendations
-router.get('/recommendations', withSpotifyToken, async (req, res) => {
-    if (req.mockMode) {
-        return res.json(MOCK_RECOMMENDATIONS);
-    }
+// Get Recommendations (Algorithmic)
+router.get('/recommendations', async (req, res) => {
     try {
-        const { seed_tracks, seed_artists, limit = 10 } = req.query;
-        // if (!seed_tracks && !seed_artists) return res.status(400).json({ error: 'Seed tracks or artists required' });
+        const { seed_artists, seed_tracks, seed_genres } = req.query;
+        let query = 'trending music 2024';
 
-        const response = await axios.get(`https://api.spotify.com/v1/recommendations`, {
-            headers: { Authorization: `Bearer ${req.spotifyToken}` },
-            params: {
-                seed_tracks,
-                seed_artists,
-                limit,
-                min_popularity: 30
-            },
-        });
+        if (seed_tracks) {
+            query = `${seed_tracks} song mix similar`;
+        } else if (seed_artists) {
+            query = `${seed_artists} artist mix similar`;
+        } else if (seed_genres) {
+            query = `${seed_genres} music mix`;
+        }
 
-        res.json(response.data);
+        console.log(`Generating recommendations for query: ${query}`);
+
+        // Use YouTube to find a mix or similar songs
+        const r = await yts({ query, category: 'music' });
+
+        // Filter out playlists/channels, keep videos
+        const validVideos = r.videos.filter(v => v.seconds > 60).slice(0, 15);
+
+        const tracks = validVideos.map(v => ({
+            id: v.videoId,
+            name: v.title,
+            artists: [{ name: v.author.name, id: v.author.url }],
+            album: { images: [{ url: v.thumbnail }] },
+            duration_ms: v.seconds * 1000,
+            source: 'youtube',
+            is_recommendation: true // Flag for UI
+        }));
+
+        res.json({ tracks });
     } catch (error) {
-        console.error('Spotify Recommendations Error:', error.response?.data || error.message);
-        // FALLBACK
+        console.error('YouTube Recommendations Error:', error.message);
         res.json(MOCK_RECOMMENDATIONS);
     }
 });
 
 // Get Artist Details
-router.get('/artist/:id', withSpotifyToken, async (req, res) => {
-    if (req.mockMode) {
-        return res.json({ name: 'Mock Artist', images: [] });
-    }
+router.get('/artist/:id', async (req, res) => {
     try {
-        const { id } = req.params;
-        const response = await axios.get(`https://api.spotify.com/v1/artists/${id}`, {
-            headers: { Authorization: `Bearer ${req.spotifyToken}` },
-        });
-        res.json(response.data);
+        // Search for artist on YouTube
+        const r = await yts(req.params.id);
+        if (r.channels && r.channels.length > 0) {
+            const channel = r.channels[0];
+            return res.json({
+                name: channel.name,
+                images: [{ url: channel.image }],
+                followers: { total: channel.subscribers }
+            });
+        }
     } catch (error) {
-        console.error('Spotify Artist Error:', error.response?.data || error.message);
-        res.json({ name: 'Mock Artist', images: [] });
+        console.error('YouTube Artist Error:', error.message);
     }
+
+    res.json({ name: 'Artist', images: [] });
 });
 
 // Get Artist Top Tracks
-router.get('/artist/:id/top-tracks', withSpotifyToken, async (req, res) => {
-    if (req.mockMode) {
-        return res.json(MOCK_RECOMMENDATIONS);
-    }
+router.get('/artist/:id/top-tracks', async (req, res) => {
     try {
-        const { id } = req.params;
-        const response = await axios.get(`https://api.spotify.com/v1/artists/${id}/top-tracks`, {
-            headers: { Authorization: `Bearer ${req.spotifyToken}` },
-            params: { market: 'US' } // Market is required for top tracks
-        });
-        res.json(response.data);
+        // Search for artist's popular songs
+        const r = await yts(req.params.id + ' popular songs');
+        const tracks = r.videos.slice(0, 10).map(v => ({
+            id: v.videoId,
+            name: v.title,
+            artists: [{ name: v.author.name }],
+            album: { images: [{ url: v.thumbnail }] },
+            duration_ms: v.seconds * 1000,
+            source: 'youtube'
+        }));
+        res.json({ tracks });
     } catch (error) {
-        console.error('Spotify Artist Top Tracks Error:', error.response?.data || error.message);
+        console.error('YouTube Artist Top Tracks Error:', error.message);
         res.json(MOCK_RECOMMENDATIONS);
     }
 });

@@ -98,7 +98,7 @@ router.post('/login', async (req, res) => {
         // Generate Token
         const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || 'super_secret_key_nebula_123', { expiresIn: '1d' });
 
-        res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
+        res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role, image: user.image } });
     } catch (err) {
         await SecurityLog.create({ user: email, ip, status: 'failed', location, riskScore: 'Medium' });
         res.status(500).json({ error: err.message });

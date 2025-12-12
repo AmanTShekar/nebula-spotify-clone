@@ -1,6 +1,7 @@
 import express from 'express';
 import yts from 'yt-search';
 import ytdl from '@distube/ytdl-core';
+import axios from 'axios';
 
 const router = express.Router();
 
@@ -72,22 +73,86 @@ router.get('/audio', async (req, res) => {
 
         const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-        const info = await ytdl.getInfo(videoUrl);
-        const format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly' });
-
-        if (!format) {
-            return res.status(404).json({ message: 'No audio format found' });
-        }
-
-        res.json({
-            audioUrl: format.url,
-            duration: parseInt(info.videoDetails.lengthSeconds),
-            title: info.videoDetails.title
+        // Configure ytdl with agent to bypass 403 errors
+        const agent = ytdl.createAgent(undefined, {
+            localAddress: undefined
         });
 
+        const info = await ytdl.getInfo(videoUrl, {
+            agent,
+            requestOptions: {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                }
+            }
+        });
+
+        const format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly' });
+
+        if (!format) return res.status(404).json({ message: 'No audio format found' });
+
+        const mimeType = format.mimeType || 'audio/mp3';
+        const streamUrl = format.url;
+
+        // Proxy using Axios with headers to mimic browser
+        try {
+            const headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Referer': 'https://www.youtube.com/',
+                'Accept': '*/*',
+            };
+
+            // Forward Range header if present
+            if (req.headers.range) {
+                headers['Range'] = req.headers.range;
+            }
+
+            const response = await axios({
+                method: 'get',
+                url: streamUrl,
+                headers: headers,
+                responseType: 'stream',
+                validateStatus: status => status >= 200 && status < 300 || status === 206 // parsing behavior
+            });
+
+            res.setHeader('Content-Type', response.headers['content-type'] || mimeType);
+            res.setHeader('Accept-Ranges', 'bytes');
+
+            if (response.headers['content-length']) {
+                res.setHeader('Content-Length', response.headers['content-length']);
+            }
+            if (response.headers['content-range']) {
+                res.setHeader('Content-Range', response.headers['content-range']);
+                res.status(206);
+            }
+
+            console.log(`Proxying ${videoId} [${response.status}] ${response.headers['content-type']}`);
+
+            response.data.pipe(res);
+
+        } catch (proxyError) {
+            console.error('Proxy Error:', proxyError.message);
+            console.error('Proxy Error Status:', proxyError.response?.status);
+            if (!res.headersSent) {
+                res.status(502).json({
+                    error: 'Audio Proxy Failed',
+                    message: proxyError.message,
+                    status: proxyError.response?.status
+                });
+            }
+        }
+
     } catch (err) {
-        console.error("Audio Stream Error:", err);
-        res.status(500).json({ error: err.message });
+        console.error("Audio Route Error:", err.message);
+        console.error("Error stack:", err.stack);
+        if (!res.headersSent) {
+            res.status(500).json({
+                error: err.message,
+                type: err.name,
+                stack: err.stack?.split('\n').slice(0, 3).join('\n') // First 3 lines only
+            });
+        }
     }
 });
 

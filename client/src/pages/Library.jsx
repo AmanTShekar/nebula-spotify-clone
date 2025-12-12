@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import SongCard from '../components/SongCard';
 import { Library as LibraryIcon, Heart, ListMusic, Play } from 'lucide-react';
+import { API_URL } from '../config/api';
 
 const Library = () => {
     const { token } = useAuth();
@@ -19,7 +20,7 @@ const Library = () => {
             setLoading(true);
             try {
                 if (activeTab === 'likes') {
-                    const res = await axios.get(`${import.meta.env.VITE_API_URL}/user/likes`, {
+                    const res = await axios.get(`${API_URL}/user/likes`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
 
@@ -38,10 +39,10 @@ const Library = () => {
                     setLikedSongs(mappedSongs);
 
                 } else {
-                    const res = await axios.get(`${import.meta.env.VITE_API_URL}/user/playlists`, {
+                    const res = await axios.get(`${API_URL}/user/playlists`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
-                    setPlaylists(res.data);
+                    setPlaylists(Array.isArray(res.data) ? res.data : []);
                 }
             } catch (err) {
                 console.error(err);
@@ -120,8 +121,8 @@ const Library = () => {
                                                 <ListMusic size={32} className="md:w-12 md:h-12 text-gray-600 group-hover:text-white transition-colors duration-300 transform group-hover:scale-110" />
 
                                                 <div className="absolute bottom-2 right-2 md:bottom-3 md:right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-y-2 group-hover:translate-y-0">
-                                                    <div className="bg-green-500 rounded-full p-2 md:p-3 shadow-lg hover:scale-105 transition-transform">
-                                                        <Play size={16} className="md:w-5 md:h-5 fill-black text-black ml-0.5" />
+                                                    <div className="bg-gradient-to-br from-purple-500 via-pink-500 to-blue-500 rounded-full p-2 md:p-3 shadow-lg hover:scale-105 transition-transform">
+                                                        <Play size={16} className="md:w-5 md:h-5 fill-white text-white ml-0.5" />
                                                     </div>
                                                 </div>
                                             </div>

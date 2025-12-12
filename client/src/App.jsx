@@ -1,4 +1,5 @@
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { API_URL } from './config/api';
 import Sidebar from './components/Sidebar';
 import Player from './components/Player';
 import MobileNav from './components/MobileNav';
@@ -44,9 +45,7 @@ const AppContent = () => {
     useEffect(() => {
         const checkMaintenance = async () => {
             try {
-                // Determine API URL (handle potential trailing/missing slash scenarios if env varies)
-                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-                const res = await axios.get(`${apiUrl}/user/maintenance`);
+                const res = await axios.get(`${API_URL}/user/maintenance`);
                 setIsMaintenance(res.data.isMaintenanceMode);
             } catch (err) {
                 console.error("Failed to check maintenance status", err);
@@ -88,7 +87,7 @@ const AppContent = () => {
                     <Sidebar />
                 </div>
 
-                <div className="flex-1 flex flex-col glass md:rounded-xl overflow-hidden relative">
+                <div className="flex-1 flex flex-col min-w-0 glass md:rounded-xl relative">
                     <Navbar />
                     <div className="flex-1 overflow-y-auto custom-scrollbar pb-20 md:pb-28">
                         <Routes>

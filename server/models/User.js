@@ -14,6 +14,10 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    image: {
+        type: String,
+        default: ""
+    },
     playlists: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Playlist',
@@ -33,6 +37,13 @@ const userSchema = new mongoose.Schema({
     },
     searchHistory: [{
         query: String,
+        timestamp: { type: Date, default: Date.now }
+    }],
+    listeningHistory: [{
+        trackId: String,
+        name: String,
+        artist: String,
+        image: String,
         timestamp: { type: Date, default: Date.now }
     }]
 }, { timestamps: true });

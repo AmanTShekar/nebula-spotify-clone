@@ -5,6 +5,17 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* Safe area insets for notched devices */
+    --sat: env(safe-area-inset-top);
+    --sar: env(safe-area-inset-right);
+    --sab: env(safe-area-inset-bottom);
+    --sal: env(safe-area-inset-left);
+
+    /* Mobile-optimized touch targets */
+    --touch-target-min: 44px;
+  }
+
   body {
     @apply bg-[#0f0f16] text-white overflow-hidden select-none;
     background-image:
@@ -13,6 +24,19 @@
     background-size: 200% 200%;
     animation: nebula-move 20s ease infinite alternate;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+
+    /* Prevent pull-to-refresh on mobile */
+    overscroll-behavior-y: contain;
+
+    /* Improve text rendering on mobile */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Improve tap highlighting on mobile */
+  * {
+    -webkit-tap-highlight-color: rgba(99, 102, 241, 0.1);
   }
 }
 
@@ -58,6 +82,44 @@
 
   .animate-music-bar-4 {
     animation: music-bar 1s ease-in-out infinite 0.3s;
+  }
+
+  /* Mobile-specific utilities */
+  .touch-target {
+    min-width: var(--touch-target-min);
+    min-height: var(--touch-target-min);
+  }
+
+  .safe-top {
+    padding-top: max(1rem, var(--sat));
+  }
+
+  .safe-bottom {
+    padding-bottom: max(1rem, var(--sab));
+  }
+
+  .safe-left {
+    padding-left: max(1rem, var(--sal));
+  }
+
+  .safe-right {
+    padding-right: max(1rem, var(--sar));
+  }
+
+  /* Smooth momentum scrolling on iOS */
+  .smooth-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 

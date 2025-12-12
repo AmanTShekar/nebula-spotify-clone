@@ -6,12 +6,13 @@ import { Hexagon } from 'lucide-react';
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const { login } = useAuth();
+    const { login, continueAsGuest } = useAuth();
     const navigate = useNavigate();
     const [error, setError] = useState('');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError(''); // Clear previous errors
         const res = await login(email, password);
         if (res.success) {
             navigate('/');
@@ -62,7 +63,10 @@ const Login = () => {
                     <button className="bg-white text-black font-bold py-4 rounded-xl mt-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl hover:shadow-white/20 uppercase tracking-widest text-xs">
                         Log In
                     </button>
-                    <div className="text-center mt-2">
+                    <div className="text-center mt-2 flex flex-col gap-2">
+                        <button type="button" onClick={() => { continueAsGuest(); navigate('/'); }} className="text-xs font-bold text-white/60 hover:text-white transition-colors uppercase tracking-widest border border-white/10 rounded-lg py-2 px-4 hover:bg-white/5">
+                            Continue as Guest
+                        </button>
                         <a href="#" className="text-xs text-gray-500 hover:text-white transition-colors">Forgot validation?</a>
                     </div>
                 </form>

@@ -2,7 +2,8 @@ import { useRef, useEffect, useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Users, Music, Activity, Trash2, Shield, ShieldAlert, Database, Server, Lock, Terminal, Copy } from 'lucide-react'; JSON
+import { Users, Music, Activity, Trash2, Shield, ShieldAlert, Database, Server, Lock, Terminal, Copy } from 'lucide-react';
+import { API_URL } from '../config/api';
 
 const Admin = () => {
     const [users, setUsers] = useState([]);
@@ -23,7 +24,7 @@ const Admin = () => {
     const [cmdInput, setCmdInput] = useState("");
     const [cmdHistory, setCmdHistory] = useState([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
-    const { token } = useAuth();
+    const { token, logout, loading } = useAuth();
     const { showToast } = useToast();
     const logsEndRef = useRef(null);
 
@@ -37,30 +38,47 @@ const Admin = () => {
     // Main Data Fetch
     useEffect(() => {
         const fetchData = async () => {
-            if (!token) return;
+            if (loading || !token) return;
             try {
-                const statsRes = await axios.get(`${import.meta.env.VITE_API_URL}/user/admin/stats`, {
+                const statsRes = await axios.get(`${API_URL}/user/admin/stats`, {
                     headers: { Authorization: `Bearer ${token}` }
+                }).catch(err => {
+                    if (err.response?.status === 401) logout();
+                    console.warn("Failed to fetch stats:", err.response?.status);
+                    return { data: { totalUsers: 0, totalPlaylists: 0, totalLikedSongs: 0, userGrowth: [], systemStats: null } };
                 });
                 setStats(statsRes.data);
                 if (statsRes.data.systemStats) {
                     setLiveUptime(Math.floor(statsRes.data.systemStats.uptime));
                 }
 
-                const usersRes = await axios.get(`${import.meta.env.VITE_API_URL}/user/admin/users`, {
+                const usersRes = await axios.get(`${API_URL}/user/admin/users`, {
                     headers: { Authorization: `Bearer ${token}` }
+                }).catch(err => {
+                    console.warn("Failed to fetch users:", err.response?.status);
+                    return { data: [] };
                 });
-                setUsers(usersRes.data);
+                setUsers(Array.isArray(usersRes.data) ? usersRes.data : []);
 
-                const playlistsRes = await axios.get(`${import.meta.env.VITE_API_URL}/user/admin/playlists`, {
+                const playlistsRes = await axios.get(`${API_URL}/user/admin/playlists`, {
                     headers: { Authorization: `Bearer ${token}` }
+                }).catch(err => {
+                    console.warn("Failed to fetch playlists:", err.response?.status);
+                    return { data: [] };
                 });
-                setPlaylists(playlistsRes.data);
+                setPlaylists(Array.isArray(playlistsRes.data) ? playlistsRes.data : []);
 
-                const maintRes = await axios.get(`${import.meta.env.VITE_API_URL}/user/maintenance`);
+                const maintRes = await axios.get(`${API_URL}/user/maintenance`).catch(err => {
+                    console.warn("Failed to fetch maintenance status:", err.response?.status);
+                    return { data: { isMaintenanceMode: false } };
+                });
                 setIsMaintenance(maintRes.data.isMaintenanceMode);
             } catch (err) {
                 console.error("Error fetching admin data:", err);
+                // Set safe defaults
+                setUsers([]);
+                setPlaylists([]);
+                setStats({ totalUsers: 0, totalPlaylists: 0, totalLikedSongs: 0, userGrowth: [], systemStats: null });
             }
         };
         fetchData();
@@ -68,23 +86,24 @@ const Admin = () => {
         // Poll stats every 10s for live updates (except uptime which is local)
         const statsInterval = setInterval(fetchData, 10000);
         return () => clearInterval(statsInterval);
-    }, [token]);
+    }, [token, loading]);
 
     // Fetch Security Data
     useEffect(() => {
-        if (activeTab === 'security' && token) {
+        if (!loading && activeTab === 'security' && token) {
             const fetchSecurityData = async () => {
                 try {
-                    const logsRes = await axios.get(`${import.meta.env.VITE_API_URL}/user/admin/security/logs`, {
+                    const logsRes = await axios.get(`${API_URL}/user/admin/security/logs`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     setSecurityLogs(logsRes.data);
 
-                    const settingsRes = await axios.get(`${import.meta.env.VITE_API_URL}/user/admin/security/settings`, {
+                    const settingsRes = await axios.get(`${API_URL}/user/admin/security/settings`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     setSystemSettings(settingsRes.data);
                 } catch (err) {
+                    if (err.response?.status === 401) logout();
                     console.error("Error fetching security data:", err);
                 }
             };
@@ -93,13 +112,13 @@ const Admin = () => {
             const interval = setInterval(fetchSecurityData, 5000);
             return () => clearInterval(interval);
         }
-    }, [activeTab, token]);
+    }, [activeTab, token, loading]);
 
     const handleToggleSetting = async (key) => {
         if (!systemSettings) return;
         try {
             const newValue = !systemSettings[key];
-            const res = await axios.post(`${import.meta.env.VITE_API_URL}/user/admin/security/settings`,
+            const res = await axios.post(`${API_URL}/user/admin/security/settings`,
                 { [key]: newValue },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -114,7 +133,7 @@ const Admin = () => {
     const handleRestartServer = async () => {
         if (!window.confirm("Are you sure you want to restart the server monitoring logic? This will reset uptime.")) return;
         try {
-            await axios.post(`${import.meta.env.VITE_API_URL}/user/admin/server/restart`, {}, {
+            await axios.post(`${API_URL}/user/admin/server/restart`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             showToast("Server stats reset successfully.", "success");
@@ -128,7 +147,7 @@ const Admin = () => {
     const handleClearLogs = async () => {
         if (!window.confirm("This will permanently delete ALL security logs. Continue?")) return;
         try {
-            await axios.post(`${import.meta.env.VITE_API_URL}/user/admin/security/clear-logs`, {}, {
+            await axios.post(`${API_URL}/user/admin/security/clear-logs`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setSecurityLogs([]);
@@ -142,7 +161,7 @@ const Admin = () => {
     const handleLockdown = async () => {
         if (!window.confirm("EMERGENCY LOCKDOWN: This will disable registration and verify email for ALL users. Proceed?")) return;
         try {
-            await axios.post(`${import.meta.env.VITE_API_URL}/user/admin/server/lockdown`, {}, {
+            await axios.post(`${API_URL}/user/admin/server/lockdown`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             showToast("Server is now in LOCKDOWN mode.", "error", 5000);
@@ -155,7 +174,7 @@ const Admin = () => {
 
     const handleTestKey = async () => {
         try {
-            const res = await axios.get(`${import.meta.env.VITE_API_URL}/user/api/verify-key`, {
+            const res = await axios.get(`${API_URL}/user/api/verify-key`, {
                 headers: { 'x-api-key': systemSettings?.rootApiKey }
             });
             showToast(`Success: ${res.data.message}`, "success");
@@ -181,10 +200,10 @@ const Admin = () => {
 
     // Live Logs Poller
     useEffect(() => {
-        if (activeTab === 'console' && token) {
+        if (!loading && activeTab === 'console' && token) {
             const fetchLogs = async () => {
                 try {
-                    const res = await axios.get(`${import.meta.env.VITE_API_URL}/user/admin/logs`, {
+                    const res = await axios.get(`${API_URL}/user/admin/logs`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     setServerLogs(res.data);
@@ -196,7 +215,7 @@ const Admin = () => {
             const logInterval = setInterval(fetchLogs, 2000);
             return () => clearInterval(logInterval);
         }
-    }, [activeTab, token]);
+    }, [activeTab, token, loading]);
 
     // Frontend Log Interceptor
     useEffect(() => {
@@ -245,10 +264,17 @@ const Admin = () => {
     const allLogs = [...serverLogs, ...clientLogs].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
     useEffect(() => {
-        if (activeTab === 'console') {
-            logsEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+        if (activeTab === 'console' && logsEndRef.current) {
+            const container = logsEndRef.current.parentElement;
+            if (container) {
+                // Only auto-scroll if user is already near the bottom
+                const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+                if (isNearBottom) {
+                    logsEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+                }
+            }
         }
-    }, [allLogs, activeTab]);
+    }, [allLogs.length, activeTab]); // Only trigger on log count change, not content
 
     const handleKeyDown = (e) => {
         if (e.key === 'ArrowUp') {
@@ -329,7 +355,7 @@ const Admin = () => {
                 // Try sending to server
                 try {
                     setClientLogs(prev => [...prev, { timestamp: now, type: 'info', message: 'Sending to server...', isClient: true }]);
-                    const res = await axios.post(`${import.meta.env.VITE_API_URL}/user/admin/terminal`,
+                    const res = await axios.post(`${API_URL}/user/admin/terminal`,
                         { command: cmd },
                         { headers: { Authorization: `Bearer ${token}` } }
                     );
@@ -348,10 +374,10 @@ const Admin = () => {
     };
 
     useEffect(() => {
-        if (activeTab === 'database' && token) {
+        if (!loading && activeTab === 'database' && token) {
             const fetchDb = async () => {
                 try {
-                    const res = await axios.get(`${import.meta.env.VITE_API_URL}/user/admin/db/${dbCollection}`, {
+                    const res = await axios.get(`${API_URL}/user/admin/db/${dbCollection}`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     setDbData(res.data);
@@ -361,11 +387,11 @@ const Admin = () => {
             };
             fetchDb();
         }
-    }, [activeTab, dbCollection, token]);
+    }, [activeTab, dbCollection, token, loading]);
 
     const toggleMaintenance = async () => {
         try {
-            const res = await axios.post(`${import.meta.env.VITE_API_URL}/user/admin/maintenance`, {}, {
+            const res = await axios.post(`${API_URL}/user/admin/maintenance`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setIsMaintenance(res.data.isMaintenanceMode);
@@ -378,7 +404,7 @@ const Admin = () => {
     const handleDeleteUser = async (userId) => {
         if (!window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) return;
         try {
-            await axios.delete(`${import.meta.env.VITE_API_URL}/user/admin/users/${userId}`, {
+            await axios.delete(`${API_URL}/user/admin/users/${userId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setUsers(users.filter(u => u._id !== userId));
@@ -393,7 +419,7 @@ const Admin = () => {
     const handleDeletePlaylist = async (playlistId) => {
         if (!window.confirm("Are you sure you want to delete this playlist?")) return;
         try {
-            await axios.delete(`${import.meta.env.VITE_API_URL}/user/admin/playlists/${playlistId}`, {
+            await axios.delete(`${API_URL}/user/admin/playlists/${playlistId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setPlaylists(playlists.filter(p => p._id !== playlistId));
@@ -416,13 +442,15 @@ const Admin = () => {
         // Map last 7 days to ensure we have labels even if 0 users
         const labels = [];
         const data = [];
+        const userGrowth = stats.userGrowth || [];
+
         for (let i = 6; i >= 0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
             const dateStr = d.toISOString().split('T')[0];
             labels.push(d.toLocaleDateString('en-US', { weekday: 'short' })); // Mon, Tue
 
-            const found = stats.userGrowth.find(g => g._id === dateStr);
+            const found = userGrowth.find(g => g._id === dateStr);
             data.push(found ? found.count : 0);
         }
 
@@ -503,8 +531,8 @@ const Admin = () => {
                         </div>
                     </div>
                     <div className="text-right">
-                        <div className="text-sm font-bold text-white">Users: {stats.totalUsers}</div>
-                        <div className="text-sm font-bold text-white">Playlists: {stats.totalPlaylists}</div>
+                        <div className="text-sm font-bold text-white">Users: {stats.totalUsers || 0}</div>
+                        <div className="text-sm font-bold text-white">Playlists: {stats.totalPlaylists || 0}</div>
                     </div>
                 </div>
             </div>
@@ -541,7 +569,7 @@ const Admin = () => {
                             </div>
                             <div>
                                 <h3 className="text-indigo-200 font-bold text-[10px] md:text-xs uppercase tracking-widest mb-1">Total Users</h3>
-                                <p className="text-3xl md:text-5xl font-black text-white tracking-tighter">{stats.totalUsers}</p>
+                                <p className="text-3xl md:text-5xl font-black text-white tracking-tighter">{stats.totalUsers || 0}</p>
                             </div>
                         </div>
 
@@ -551,7 +579,7 @@ const Admin = () => {
                             </div>
                             <div>
                                 <h3 className="text-emerald-200 font-bold text-[10px] md:text-xs uppercase tracking-widest mb-1">Active Now</h3>
-                                <p className="text-3xl md:text-5xl font-black text-white tracking-tighter">{Math.floor(stats.totalUsers * 0.8) + 1}</p>
+                                <p className="text-3xl md:text-5xl font-black text-white tracking-tighter">{Math.floor((stats.totalUsers || 0) * 0.8) + 1}</p>
                             </div>
                         </div>
 
@@ -692,7 +720,7 @@ const Admin = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/5">
-                                    {(securityLogs.length > 0 ? securityLogs : [
+                                    {(Array.isArray(securityLogs) && securityLogs.length > 0 ? securityLogs : [
                                         { status: 'success', user: 'admin@spotify.com', ip: '192.168.1.1', location: 'Localhost', createdAt: new Date().toISOString(), riskScore: 'Low' },
                                         { status: 'failed', user: 'root', ip: '45.32.11.2', location: 'Russia', createdAt: new Date(Date.now() - 7200000).toISOString(), riskScore: 'High' }
                                     ]).map((log, i) => (

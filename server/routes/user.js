@@ -9,26 +9,40 @@ const router = express.Router();
 // Middleware to verify Token
 const verifyToken = (req, res, next) => {
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    if (!token) return res.status(401).json({ message: 'Access Denied' });
+    if (!token) {
+        return res.status(401).json({ message: 'Access Denied: No token provided' });
+    }
 
     try {
-        const verified = jwt.verify(token, process.env.JWT_SECRET);
+        const verified = jwt.verify(token, process.env.JWT_SECRET || 'super_secret_key_nebula_123');
         req.user = verified;
         next();
     } catch (err) {
-        res.status(400).json({ message: 'Invalid Token' });
+        if (err.name === 'TokenExpiredError') {
+            return res.status(401).json({ message: 'Token expired. Please log in again.' });
+        }
+        if (err.name === 'JsonWebTokenError') {
+            return res.status(401).json({ message: 'Invalid token. Please log in again.' });
+        }
+        res.status(400).json({ message: 'Token verification failed', error: err.message });
     }
 };
 
-// Debug: Check current token role
+// Get current user info
 router.get('/me', verifyToken, async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select('-password');
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
         res.json({
-            tokenRole: req.user.role,
-            dbRole: user.role,
-            match: req.user.role === user.role,
-            user: user
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                image: user.image
+            }
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -44,6 +58,62 @@ router.get('/likes', verifyToken, async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// Add to History (Listening or Search)
+router.post('/history', verifyToken, async (req, res) => {
+    try {
+        const { trackId, name, artist, image, query } = req.body;
+        const user = await User.findById(req.user.id);
+
+        if (query) {
+            // Search History
+            // Remove duplicate if exists
+            user.searchHistory = user.searchHistory.filter(h => h.query !== query);
+            user.searchHistory.unshift({ query });
+            if (user.searchHistory.length > 20) {
+                user.searchHistory = user.searchHistory.slice(0, 20);
+            }
+            await user.save();
+            return res.json(user.searchHistory);
+        }
+
+        if (trackId) {
+            // Listening History
+            // Remove duplicate if exists
+            user.listeningHistory = user.listeningHistory.filter(h => h.trackId !== trackId);
+            user.listeningHistory.unshift({ trackId, name, artist, image });
+
+            if (user.listeningHistory.length > 50) {
+                user.listeningHistory = user.listeningHistory.slice(0, 50);
+            }
+
+            await user.save();
+            return res.json(user.listeningHistory);
+        }
+
+        res.status(400).json({ message: "Invalid history data" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get History
+router.get('/history', verifyToken, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        const { type } = req.query;
+
+        if (type === 'search') {
+            return res.json(user.searchHistory);
+        }
+
+        res.json(user.listeningHistory);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
 
 // Update Profile
 router.put('/update-profile', verifyToken, async (req, res) => {
@@ -174,6 +244,26 @@ router.delete('/playlists/:id/songs/:songId', verifyToken, async (req, res) => {
 
         await playlist.save();
         res.json(playlist);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete Playlist (User's own playlist)
+router.delete('/playlists/:id', verifyToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const playlist = await Playlist.findById(id);
+
+        if (!playlist) return res.status(404).json({ message: 'Playlist not found' });
+
+        // Check if user owns this playlist
+        if (playlist.user.toString() !== req.user.id) {
+            return res.status(403).json({ message: 'Not authorized to delete this playlist' });
+        }
+
+        await Playlist.findByIdAndDelete(id);
+        res.json({ message: 'Playlist deleted successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

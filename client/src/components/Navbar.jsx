@@ -9,7 +9,13 @@ const Navbar = () => {
     const { user, logout } = useAuth();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
+    const [imgError, setImgError] = useState(false);
     const dropdownRef = useRef(null);
+
+    // Reset image error when avatar updates
+    useEffect(() => {
+        setImgError(false);
+    }, [user?.image]);
 
     // Click outside to close
     useEffect(() => {
@@ -26,20 +32,20 @@ const Navbar = () => {
         <div className="w-full h-14 md:h-16 flex items-center justify-between px-4 md:px-8 sticky top-0 z-[500] backdrop-blur-md bg-transparent">
             <div className="flex items-center gap-2 md:gap-4">
                 <div onClick={() => navigate(-1)} className="glass p-1.5 md:p-2 rounded-full cursor-pointer hover:bg-white/10 transition active:scale-95">
-                    <ChevronLeft size={18} className="text-white md:w-5 md:h-5" />
+                    <ChevronLeft size={24} className="text-white" />
                 </div>
                 <div onClick={() => navigate(1)} className="glass p-1.5 md:p-2 rounded-full cursor-pointer hover:bg-white/10 transition active:scale-95">
-                    <ChevronRight size={18} className="text-white md:w-5 md:h-5" />
+                    <ChevronRight size={24} className="text-white" />
                 </div>
             </div>
 
             <div className="flex items-center gap-2 md:gap-4">
                 {!user ? (
                     <>
-                        <button onClick={() => navigate('/signup')} className="text-gray-300 font-bold hover:text-white hover:scale-105 transition tracking-wide text-xs md:text-sm">
+                        <button onClick={() => navigate('/signup')} className="text-gray-300 font-bold hover:text-white hover:scale-105 transition tracking-wide text-sm md:text-base">
                             Sign up
                         </button>
-                        <button onClick={() => navigate('/login')} className="bg-white text-black font-bold px-4 md:px-8 py-2 md:py-3 rounded-full hover:scale-105 transition shadow-lg shadow-white/10 text-xs md:text-sm">
+                        <button onClick={() => navigate('/login')} className="bg-white text-black font-bold px-4 md:px-8 py-2 md:py-3 rounded-full hover:scale-105 transition shadow-lg shadow-white/10 text-sm md:text-base">
                             Log in
                         </button>
                     </>
@@ -47,66 +53,105 @@ const Navbar = () => {
                     <div className="flex items-center gap-2 md:gap-4">
                         <button
                             onClick={() => setIsPremiumModalOpen(true)}
-                            className="hidden md:flex glass px-4 py-1.5 rounded-full text-sm font-bold hover:bg-white/10 transition border-white/20 hover:border-white/40 items-center gap-2"
+                            className="hidden md:flex glass px-4 py-1.5 rounded-full text-base font-bold hover:bg-white/10 transition border-white/20 hover:border-white/40 items-center gap-2"
                         >
-                            <Sparkles size={14} className="text-yellow-400" /> Explore Premium
+                            <Sparkles size={18} className="text-yellow-400" /> Explore Premium
                         </button>
                         <div className="relative z-50" ref={dropdownRef}>
                             <button
                                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                className={`flex items-center gap-2 bg-black/60 hover:bg-black/80 p-0.5 pr-2 md:pr-3 rounded-full transition-all border ${isDropdownOpen ? 'border-white/20 bg-black/90' : 'border-transparent hover:border-white/10'}`}
+                                className={`flex items-center gap-2 bg-black/60 hover:bg-black/80 p-0.5 pr-3 rounded-full transition-all border ${isDropdownOpen ? 'border-white/20 bg-black/90' : 'border-transparent hover:border-white/10'}`}
                             >
-                                <div className="bg-gradient-to-tr from-indigo-500 to-pink-500 p-1.5 rounded-full shadow-lg">
-                                    <User size={14} className="text-white md:w-4 md:h-4" />
+                                <div className="bg-gradient-to-tr from-indigo-500 to-pink-500 p-0.5 rounded-full shadow-lg overflow-hidden w-8 h-8 flex items-center justify-center">
+                                    {user.image && !imgError ? (
+                                        <img
+                                            src={user.image}
+                                            alt={user.name}
+                                            className="w-full h-full rounded-full object-cover bg-black"
+                                            onError={() => setImgError(true)}
+                                            referrerPolicy="no-referrer"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center bg-transparent">
+                                            <User size={16} className="text-white" />
+                                        </div>
+                                    )}
                                 </div>
-                                <span className="text-white font-bold text-xs md:text-sm hidden sm:block max-w-[80px] md:max-w-[100px] truncate">{user.name || 'User'}</span>
+                                <span className="text-white font-bold text-sm md:text-base max-w-[100px] truncate">{user.name || 'User'}</span>
                             </button>
 
                             {isDropdownOpen && (
-                                <div className="absolute right-0 top-full mt-2 w-64 md:w-72 bg-[#18181b] border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-2 origin-top-right animate-fade-in-up z-[100]">
-                                    <div className="px-3 py-3 border-b border-white/5 mb-1 flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-pink-500 flex items-center justify-center shrink-0">
-                                            <span className="font-bold text-lg">{user.name?.[0]?.toUpperCase()}</span>
+                                <>
+                                    <div className="fixed inset-0 z-[80] cursor-default bg-black/50 md:bg-transparent backdrop-blur-sm md:backdrop-blur-none transition-all" onClick={() => setIsDropdownOpen(false)}></div>
+                                    <div className="
+                                        fixed md:absolute 
+                                        top-[20%] md:top-full 
+                                        left-4 right-4 md:left-auto md:right-0 
+                                        md:mt-2 
+                                        w-auto md:w-72 
+                                        bg-[#18181b] 
+                                        border border-white/10 
+                                        rounded-2xl 
+                                        shadow-[0_0_50px_rgba(0,0,0,0.8)] md:shadow-[0_20px_50px_rgba(0,0,0,0.5)] 
+                                        p-2 
+                                        origin-center md:origin-top-right 
+                                        animate-fade-in-up 
+                                        z-[100]
+                                    ">
+                                        <div className="px-3 py-3 border-b border-white/5 mb-1 flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-pink-500 flex items-center justify-center shrink-0 shadow-inner overflow-hidden">
+                                                {user.image && !imgError ? (
+                                                    <img
+                                                        src={user.image}
+                                                        alt={user.name}
+                                                        className="w-full h-full object-cover"
+                                                        onError={() => setImgError(true)}
+                                                        referrerPolicy="no-referrer"
+                                                    />
+                                                ) : (
+                                                    <span className="font-bold text-lg text-white">{(user.name?.[0] || 'U').toUpperCase()}</span>
+                                                )}
+                                            </div>
+                                            <div className="overflow-hidden">
+                                                <p className="text-white font-bold text-sm truncate">{user.name || 'User'}</p>
+                                                <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                                            </div>
                                         </div>
-                                        <div className="overflow-hidden">
-                                            <p className="text-white font-bold text-sm truncate">{user.name}</p>
-                                            <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                                        <div className="space-y-1">
+                                            {(user.role === 'admin' || user.role === 'super-admin') && (
+                                                <>
+                                                    <button onClick={() => { navigate('/admin'); setIsDropdownOpen(false); }} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-colors font-bold flex items-center gap-3 group/item ${user.role === 'super-admin' ? 'hover:bg-red-500/10 text-red-400' : 'hover:bg-amber-500/10 text-amber-400'}`}>
+                                                        <div className="flex items-center gap-3">
+                                                            {user.role === 'super-admin' ? <ShieldAlert size={24} /> : <Shield size={24} />}
+                                                            {user.role === 'super-admin' ? 'Super Admin' : 'Admin Panel'}
+                                                        </div>
+                                                        <ExternalLink size={20} className="opacity-0 group-hover/item:opacity-100 transition-opacity ml-auto" />
+                                                    </button>
+                                                    <div className="h-[1px] bg-white/5 my-1 mx-2"></div>
+                                                </>
+                                            )}
+                                            <button onClick={() => { navigate('/profile'); setIsDropdownOpen(false); }} className="w-full text-left px-3 py-2.5 hover:bg-white/10 rounded-xl text-sm transition-colors text-gray-200 flex items-center justify-between group/item">
+                                                <div className="flex items-center gap-3">
+                                                    <User size={24} className="text-gray-400 group-hover/item:text-white transition-colors" />
+                                                    Profile
+                                                </div>
+                                                <ChevronRight size={20} className="opacity-0 group-hover/item:opacity-100 transition-opacity" />
+                                            </button>
+                                            <button onClick={() => { navigate('/settings'); setIsDropdownOpen(false); }} className="w-full text-left px-3 py-2.5 hover:bg-white/10 rounded-xl text-sm transition-colors text-gray-200 flex items-center justify-between group/item">
+                                                <div className="flex items-center gap-3">
+                                                    <SettingsIcon size={24} className="text-gray-400 group-hover/item:text-white transition-colors" />
+                                                    Settings
+                                                </div>
+                                                <ChevronRight size={20} className="opacity-0 group-hover/item:opacity-100 transition-opacity" />
+                                            </button>
+                                            <div className="h-[1px] bg-white/5 my-1 mx-2"></div>
+                                            <button onClick={logout} className="w-full text-left px-3 py-2.5 hover:bg-red-500/10 hover:text-red-400 rounded-xl text-sm transition-colors text-gray-200 font-medium flex items-center gap-3 group/item">
+                                                <LogOut size={24} className="group-hover/item:text-red-400 text-gray-400 transition-colors" />
+                                                Log out
+                                            </button>
                                         </div>
                                     </div>
-                                    <div className="space-y-1">
-                                        {(user.role === 'admin' || user.role === 'super-admin') && (
-                                            <>
-                                                <button onClick={() => { navigate('/admin'); setIsDropdownOpen(false); }} className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-colors font-bold flex items-center gap-3 group/item ${user.role === 'super-admin' ? 'hover:bg-red-500/10 text-red-400' : 'hover:bg-amber-500/10 text-amber-400'}`}>
-                                                    <div className="flex items-center gap-3">
-                                                        {user.role === 'super-admin' ? <ShieldAlert size={16} /> : <Shield size={16} />}
-                                                        {user.role === 'super-admin' ? 'Super Admin' : 'Admin Panel'}
-                                                    </div>
-                                                    <ExternalLink size={14} className="opacity-0 group-hover/item:opacity-100 transition-opacity ml-auto" />
-                                                </button>
-                                                <div className="h-[1px] bg-white/5 my-1 mx-2"></div>
-                                            </>
-                                        )}
-                                        <button onClick={() => { navigate('/profile'); setIsDropdownOpen(false); }} className="w-full text-left px-3 py-2.5 hover:bg-white/10 rounded-xl text-sm transition-colors text-gray-200 flex items-center justify-between group/item">
-                                            <div className="flex items-center gap-3">
-                                                <User size={16} className="text-gray-400 group-hover/item:text-white transition-colors" />
-                                                Profile
-                                            </div>
-                                            <ChevronRight size={14} className="opacity-0 group-hover/item:opacity-100 transition-opacity" />
-                                        </button>
-                                        <button onClick={() => { navigate('/settings'); setIsDropdownOpen(false); }} className="w-full text-left px-3 py-2.5 hover:bg-white/10 rounded-xl text-sm transition-colors text-gray-200 flex items-center justify-between group/item">
-                                            <div className="flex items-center gap-3">
-                                                <SettingsIcon size={16} className="text-gray-400 group-hover/item:text-white transition-colors" />
-                                                Settings
-                                            </div>
-                                            <ChevronRight size={14} className="opacity-0 group-hover/item:opacity-100 transition-opacity" />
-                                        </button>
-                                        <div className="h-[1px] bg-white/5 my-1 mx-2"></div>
-                                        <button onClick={logout} className="w-full text-left px-3 py-2.5 hover:bg-red-500/10 hover:text-red-400 rounded-xl text-sm transition-colors text-gray-200 font-medium flex items-center gap-3 group/item">
-                                            <LogOut size={16} className="group-hover/item:text-red-400 text-gray-400 transition-colors" />
-                                            Log out
-                                        </button>
-                                    </div>
-                                </div>
+                                </>
                             )}
                         </div>
                     </div>

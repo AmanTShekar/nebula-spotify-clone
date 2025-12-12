@@ -4,6 +4,7 @@ import SongCard from '../components/SongCard';
 import Loader from '../components/Loader';
 import { Search as SearchIcon, X, TrendingUp, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { API_URL } from '../config/api';
 
 
 const SkeletonCard = () => (
@@ -30,8 +31,9 @@ const Search = () => {
     // Fetch Search History
     useEffect(() => {
         if (token) {
-            axios.get(`${import.meta.env.VITE_API_URL}/user/history`, {
-                headers: { Authorization: `Bearer ${token}` }
+            axios.get(`${API_URL}/user/history`, {
+                headers: { Authorization: `Bearer ${token}` },
+                params: { type: 'search' }
             }).then(res => setHistory(res.data)).catch(err => {
                 if (err.response && err.response.status !== 400) console.error(err);
             });
@@ -43,7 +45,7 @@ const Search = () => {
         const fetchSuggestions = setTimeout(async () => {
             if (query && query.length > 1 && showSuggestions) {
                 try {
-                    const res = await axios.get(`${import.meta.env.VITE_API_URL}/youtube/suggestions`, {
+                    const res = await axios.get(`${API_URL}/youtube/suggestions`, {
                         params: { q: query }
                     });
                     setSuggestions(res.data.suggestions || []);
@@ -64,7 +66,7 @@ const Search = () => {
             if (query) {
                 setLoading(true);
                 if (token && query.length > 2) {
-                    axios.post(`${import.meta.env.VITE_API_URL}/user/history`, { query }, {
+                    axios.post(`${API_URL}/user/history`, { query }, {
                         headers: { Authorization: `Bearer ${token}` }
                     }).then(res => setHistory(res.data)).catch(err => {
                         if (err.response && err.response.status !== 400) console.error(err);
@@ -72,7 +74,7 @@ const Search = () => {
                 }
 
                 try {
-                    const res = await axios.get(`${import.meta.env.VITE_API_URL}/youtube/search`, {
+                    const res = await axios.get(`${API_URL}/youtube/search`, {
                         params: { q: query, type: activeFilter }
                     });
                     setResults(res.data.tracks.items.map(t => ({ ...t, source: 'youtube' })));
