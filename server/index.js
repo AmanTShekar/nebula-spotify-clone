@@ -2,6 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import axios from 'axios';
 import authRoutes from './routes/auth.js';
 import spotifyRoutes from './routes/spotify.js';
 import youtubeRoutes from './routes/youtube.js';
@@ -53,7 +54,29 @@ app.get('/', (req, res) => {
     res.send('Spotify Clone API is running');
 });
 
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'active', timestamp: new Date() });
+});
+
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Server Updated: Routes Reloaded at ${new Date().toISOString()}`);
+
+    // Self-Healing Health Check (Prevent Render Spin-Down)
+    // Pings the public URL if available to register as active traffic
+    const HEALTH_CHECK_INTERVAL = 14 * 60 * 1000; // 14 minutes
+    setInterval(async () => {
+        try {
+            // Use Render's external URL if available, otherwise localhost
+            const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+            const healthUrl = `${baseUrl}/health`;
+
+            await axios.get(healthUrl, {
+                headers: { 'User-Agent': 'Nebula-Self-Health-Check/1.0' }
+            });
+            // console.log(`[Health-Check] System active calling ${healthUrl}`);
+        } catch (err) {
+            // console.error('[Health-Check] Failed:', err.message);
+        }
+    }, HEALTH_CHECK_INTERVAL);
 });
