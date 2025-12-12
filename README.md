@@ -1,6 +1,6 @@
 # 🌌 Nebula Music
 
-## [Live](https://nebula-spotify-clone.vercel.app/)
+## [Live - Test Site](https://nebula-spotify-clone.vercel.app/)
 
 ### The Ultimate Open Source Audio Streaming Architecture
 
