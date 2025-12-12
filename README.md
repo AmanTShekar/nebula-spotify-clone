@@ -1,105 +1,129 @@
-# 🎵 Nebula Spotify Clone
+# 🌌 Nebula Music
+### The Ultimate Open Source Audio Streaming Architecture
 
-A state-of-the-art, fully functional Spotify Clone built with the MERN stack (MongoDB, Express, React, Node.js). This application delivers a premium user experience with robust audio playback, smart recommendations, and seamless cross-device synchronization.
+![Nebula Feature Graphic](screenshots/hero-banner.png)
 
-![Nebula Spotify Clone](https://placeholder-image-url.com/banner.png) *Add a screenshot here*
+[![Educational License](https://img.shields.io/badge/License-Educational-orange.svg)](LICENSE)
+[![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)](https://reactjs.org/)
+[![Node.js](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.finance&logoColor=white)](https://nodejs.org)
+[![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=for-the-badge)](http://makeapullrequest.com)
 
-## ✨ Key Features
+**Nebula Music** is a high-fidelity **Spotify Clone** and **Audio Streaming Platform** engineered with the MERN stack. Unlike typical clones, Nebula focuses on **production-grade architecture**, featuring advanced state management, optimistic UI updates, and a fully responsive glassmorphism design system that adapts seamlessly from desktop to mobile.
 
-### 🎧 Advanced Audio Player
-- **YouTube Integration**: Reliable playback using the YouTube IFrame Player API (No 403 errors).
-- **Smart Autoplay**: Predictive algorithm uses your listening history to recommend the perfect next track.
-- **Queue Management**: Shuffle, repeat, and queue functionality.
-- **Cross-Device Sync**: Your "Recently Played" and "Liked Songs" sync across all browsers and devices.
-- **Google Cast Support**: Cast your music to supported devices (Chromecast).
+---
 
-### 🔐 Authentication & User System
-- **Secure Login/Register**: JWT-based authentication.
-- **Guest Access**: Try the app instantly without creating an account.
-- **Admin Dashboard**: Specialized controls for platform administrators.
+## 🚀 Key Technical Highlights
 
-### 🎨 Premium UI/UX
-- **Responsive Design**: Flawless experience on Desktop, User, and Mobile.
-- **Dynamic Visuals**: Glassmorphism effects, smooth transitions, and vinyl record animations.
-- **Lyrics Integration**: Real-time synchronized lyrics for supported tracks.
+### 📱 Unified Responsive Architecture
+A single codebase delivering two distinct, optimized experiences:
+*   **Desktop "Cinema" Mode**: Features a dual-column layout, keyboard shortcuts (`Space`, `M`, `Arrows`), and a side-by-side view for Lyrics/Queue.
+*   **Mobile "App" Experience**: A touch-optimized interface with swipeable tabs, heavy usage of bottom sheets, and a floating mini-player.
+*   *Implementation*: Leverages TailwindCSS `md:` breakpoints and conditional React rendering to serve the right layout without code duplication.
 
-### 🛠️ Technical Highlights
-- **Smart Caching**: Video IDs and Likes are cached to minimize API usage and load instanty.
-- **Self-Healing Server**: Built-in health check prevents server spin-down on free hosting (Render).
-- **Secure Backend**: Rotatable API keys and robust error handling.
+### ⚡ State Management & Audio Engine
+*   **React Context API**: Manages global audio state (play/pause, seek, volume) to prevent unnecessary re-renders across the component tree.
+*   **Custom Audio Wrapper**: A robust abstraction over the HTML5 Audio API that handles:
+    *   Gapless playback simulation.
+    *   Auto-queue advancement.
+    *   Error recovery and stream buffering.
 
-## 🚀 Tech Stack
+### 🎨 Glassmorphism Design System
+*   Built with a custom Tailwind configuration.
+*   Features dynamic background color extraction from album art.
+*   Uses `backdrop-blur` extensively for a modern, premium feel.
 
-- **Frontend**: React, Vite, Tailwind CSS, Lucide React
-- **Backend**: Node.js, Express, MongoDB, Mongoose
-- **APIs**: YouTube Data API v3, Custom Spotify Scraper, Genius Lyrics
+---
 
-## 🛠️ Installation & Setup
+## 🛠️ Technology Stack
 
-1.  **Clone the Repository**
-    ```bash
-    git clone https://github.com/yourusername/nebula-spotify-clone.git
-    cd nebula-spotify-clone
-    ```
+| Domain | Tech | Use Case |
+| :--- | :--- | :--- |
+| **Frontend** | React 18 (Vite) | FAST Component rendering. |
+| **Styling** | TailwindCSS | Utility-first responsive design. |
+| **Icons** | Lucide React | Lightweight, consistent iconography. |
+| **Backend** | Node.js + Express | RESTful API architecture. |
+| **Database** | MongoDB | Storing users, playlists, and metadata. |
+| **Auth** | JWT (JSON Web Tokens) | Secure stateless authentication. |
+| **External** | YouTube & Spotify APIs | Mock/Proxy data fetching. |
 
-2.  **Install Dependencies**
-    ```bash
-    # Install server dependencies
-    cd server
-    npm install
+---
 
-    # Install client dependencies
-    cd ../client
-    npm install
-    ```
+## 📸 Screen Previews
 
-3.  **Environment Variables**
-    Create a `.env` file in the `server` directory:
-    ```env
-    PORT=5000
-    MONGO_URI=your_mongodb_connection_string
-    JWT_SECRET=your_jwt_secret
-    # ADMIN_SECRET=your_admin_secret (Optional)
-    ```
-    
-    Create a `.env` file in the `client` directory:
-    ```env
-    VITE_API_URL=http://localhost:5000/api
-    ```
+### Desktop "Pro" Player
+![Desktop Mode](screenshots/desktop-demo.png)
 
-4.  **Run the Application**
-    You need two terminals:
-    
-    *Terminal 1 (Server):*
-    ```bash
-    cd server
-    npm start
-    ```
-    
-    *Terminal 2 (Client):*
-    ```bash
-    cd client
-    npm run dev
-    ```
+### Mobile Interface
+<img src="screenshots/mobile-demo.png" width="300" alt="Mobile Mode" />
 
-## 🌍 Deployment
+---
 
-### Deploying to Render
-1.  **Backend**: Create a Web Service for `server`.
-    *   Build Command: `npm install`
-    *   Start Command: `node index.js`
-    *   Env Vars: Add `MONGO_URI`, `JWT_SECRET`, and `RENDER_EXTERNAL_URL`.
-2.  **Frontend**: Create a Static Site for `client`.
-    *   Build Command: `npm install && npm run build`
-    *   Publish Directory: `dist`
-    *   Env Vars: Add `VITE_API_URL` pointing to your backend URL.
+## 🏁 Getting Started Locally
 
-This project includes a **Self-Healing mechanism** (`/health` route) that prevents the server from sleeping on Render's free tier.
+Getting Nebula Music running on your machine is simple.
+
+### Prerequisites
+*   Node.js (v18 or higher)
+*   MongoDB (Run locally or use MongoDB Atlas)
+
+### 1. Installation
+Clone the repository:
+```bash
+git clone https://github.com/AmanTShekar/nebula-spotify-clone.git
+cd nebula-spotify-clone
+```
+
+### 2. Backend Setup
+Navigate to the server folder and install dependencies:
+```bash
+cd server
+npm install
+```
+Create a `.env` file in `server/` with your credentials:
+```env
+PORT=5000
+MONGO_URI=mongodb://localhost:27017/nebula
+JWT_SECRET=your_super_secret_key_123
+```
+Start the server:
+```bash
+npm run dev
+# Server runs on http://localhost:5000
+```
+
+### 3. Frontend Setup
+Open a new terminal, navigate to the client folder:
+```bash
+cd client
+npm install
+```
+Start the React app:
+```bash
+npm run dev
+# App runs on http://localhost:5173
+```
+
+---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
-## 📄 License
+1.  Fork the Project
+2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4.  Push to the Branch (`git push origin feature/AmazingFeature`)
+5.  Open a Pull Request
 
-This project is open-source and available under the [MIT License](LICENSE).
+---
+
+## 📜 License
+
+**Educational Use Only**. See `LICENSE` for more information.
+This project is for educational and portfolio purposes. 
+
+---
+
+*Built with ❤️ by [Aman T Shekar](https://github.com/AmanTShekar)*
