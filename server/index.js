@@ -58,6 +58,11 @@ app.get('/health', (req, res) => {
     res.status(200).json({ status: 'active', timestamp: new Date() });
 });
 
+// Alias for UptimeRobot / external monitors
+app.get('/healthz', (req, res) => {
+    res.status(200).send('OK');
+});
+
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Server Updated: Routes Reloaded at ${new Date().toISOString()}`);
